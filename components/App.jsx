@@ -4,6 +4,7 @@ import Menu from "./Menu";
 import Top from "./Top";
 import Footer from "./Footer";
 import { FaToggleOn, FaToggleOff, FaSync } from "react-icons/fa";
+import { Analytics } from '@vercel/analytics/react';
 
 const App = () => {
   const [allData, setAllData] = useState([]);
@@ -485,6 +486,7 @@ const handleReset = () => {
       )}
       
       {!loading && <Footer />}
+      <Analytics />
     </div>
   );
 };
