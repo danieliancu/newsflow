@@ -10,7 +10,7 @@ const Menu = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false); // Starea pentru meniu
   const categories = ["Actualitate", "Economie", "Sport", "Sănătate", "Monden"];
-  
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth > 766) {
@@ -34,7 +34,13 @@ const Menu = ({
 
   const handleCategorySelect = (category) => {
     handleCategoryFilter(category);
-    setMenuOpen(false); // Închide meniul după selectarea categoriei
+    
+    // Închide meniul doar dacă ecranul este sub 600px
+    if (window.innerWidth < 600) {
+      setMenuOpen(false);
+    }
+
+    window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll sus după selectare
   };
 
   return (
@@ -59,7 +65,7 @@ const Menu = ({
               newsflow<span style={{ color: "#d80000" }}>.ro</span>
             </a>
           </h1>
-          
+
           {/* Afișăm FaBars sau FaTimes în funcție de starea meniului */}
           {menuOpen ? (
             <FaTimes className="hamburger" onClick={toggleMenu} />
@@ -76,7 +82,7 @@ const Menu = ({
           {categories.map((category) => (
             <div
               key={category}
-              onClick={() => handleCategorySelect(category)} // Închide meniul la selectare
+              onClick={() => handleCategorySelect(category)} // Închide meniul doar pe mobile
               style={{
                 borderBottom:
                   selectedCategory === category ? "4px solid #d80000" : "none",
