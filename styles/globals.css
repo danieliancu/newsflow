@@ -84,8 +84,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #ededed;
+    --foreground: #0a0a0a;
   }
 }
 
@@ -310,11 +310,6 @@ padding-left:0;
   outline: none;
 }
 
-
-
-
-
-
 .menu button {
   margin-right:5px !important;
   background-size: contain !important;
@@ -362,8 +357,6 @@ a {
   text-decoration: inherit;
 }
 
-
-
 h1 {
   font-size: 2.2em;
   line-height: 1.1;
@@ -387,10 +380,6 @@ h1 {
   margin:auto !important;
 }
 
-
-
-
-
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -402,9 +391,6 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
-
-
-
 
 @media (prefers-color-scheme: light) {
   :root {
@@ -421,13 +407,7 @@ button {
 
 
 
-
-
-
-
 /* carusel  */
-
-
 
 .ultima-ora {
   position: absolute;
@@ -474,8 +454,6 @@ button {
   border-radius: 0 !important;
 }
 
-
-
 .slick-art {
   background-size: cover !important;
   height: 430px;
@@ -491,22 +469,6 @@ button {
   bottom:0%;
   padding:0 20px;
 }
-
-/*
-.slick-art h3,
-.slick-art strong
-{
-  color:white;
-  text-shadow: 0 0 20px black;
-  font-weight:bold;
-}
-
-.slick-art h3 {
-  font-size:26px;
-  line-height:32px;
-  font-weight: 600;
-}
-  */
 
 .slick-art h3 {
   color: white;
@@ -611,8 +573,6 @@ button {
 
 
 @media only screen and (max-width: 600px) {
-
-
   .top-top 
   {
     display: none !important;
@@ -668,7 +628,6 @@ button {
   .slick-dots {
     display: none !important;
   }
-
 
   .container img {
     width:30%;
@@ -734,8 +693,6 @@ button {
 }
 
 
-
-
 @media only screen and (max-width: 766px) { 
 
   .menu-categories {
@@ -745,6 +702,7 @@ button {
     top: 40px;
     width:100%;
     display: none;
+    left:0;
   }
 
   .menu-item {
@@ -828,12 +786,8 @@ button {
 */
 
 
-
-
-
-
-
 /* top  */
+
 .top {
   max-width:1240px;
   margin:auto !important;
@@ -918,8 +872,6 @@ button {
   color: white;
 }
 
-
-
 .supra {
   position: absolute;
   top: 30px;
@@ -931,15 +883,16 @@ button {
   font-family: var(--title-font-family);
   z-index: 1;
   font-weight: bold;
+  color: var(--black);
+  display: none;
+  position: relative;
+  top:0px;
+  left:15px;
 }
 
-@media only screen and (max-width: 776px) {
+@media only screen and (max-width: 600px) {
   .supra {
-    position: relative;
-    top:0px;
-    left:15px;
-    border:.1px solid black;
-
+    display: inline-block;
   }
 }
 
@@ -952,6 +905,7 @@ button {
 .footer {
   padding: 40px 60px;
   border-top:1px solid black;
+  margin-top: 60px !important;
 
 }
 

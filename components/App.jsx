@@ -335,6 +335,40 @@ const handleReset = () => {
                   />
                   {item.href && (
                     <a href={item.href} target="_blank" rel="noopener noreferrer">
+                      <div className="supra" style={{ border:".5px solid black" }}>
+                        {item.source} <span className="bumb">&#8226;</span>
+                        {(() => {
+    const now = new Date();
+    const date = new Date(item.date);
+    const diffMs = now - date;
+    const diffMinutes = Math.floor(diffMs / 60000);
+    if (diffMinutes === 0) {
+      return `Chiar acum`;
+    } else if (diffMinutes === 1) {
+      return `Acum 1 minut`;
+    } else if (diffMinutes < 60) {
+      return diffMinutes > 19
+        ? `Acum ${diffMinutes} de minute`
+        : `Acum ${diffMinutes} minute`;
+    } else {
+      const hours = Math.floor(diffMinutes / 60);
+      const minutes = diffMinutes % 60;
+      const hourText =
+        hours === 1
+          ? "o oră"
+          : hours === 2
+          ? "două ore"
+          : `${hours} ore`;
+      const minuteText =
+        minutes === 0
+          ? ""
+          : minutes > 19
+          ? `${minutes} de minute`
+          : `${minutes} minute`;
+      return `Acum ${hourText}${minuteText ? ` și ${minuteText}` : ""}`;
+    }
+  })()}
+                      </div>
                       <h3>{item.text}</h3>
                       <p className="ago">
                         {selectedSource === "all" && (

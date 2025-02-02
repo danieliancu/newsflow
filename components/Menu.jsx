@@ -19,19 +19,22 @@ const Menu = ({
         setMenuOpen(false);
       }
     };
-  
+
     // Setăm valoarea inițială
     handleResize();
-  
+
     // Adăugăm și curățăm listener-ul
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-  
-  
 
   const toggleMenu = () => {
     setMenuOpen((prev) => !prev);
+  };
+
+  const handleCategorySelect = (category) => {
+    handleCategoryFilter(category);
+    setMenuOpen(false); // Închide meniul după selectarea categoriei
   };
 
   return (
@@ -63,31 +66,31 @@ const Menu = ({
           ) : (
             <FaBars className="hamburger" onClick={toggleMenu} />
           )}
-          
-          {/* Afișăm meniul dacă starea este deschisă */}
-          <div
-            className="menu-categories"
-            style={{ display: menuOpen ? "block" : "none" }}
-          >
-            {categories.map((category) => (
-              <div
-                key={category}
-                onClick={() => handleCategoryFilter(category)}
-                style={{
-                  borderBottom:
-                    selectedCategory === category ? "4px solid #d80000" : "none",
-                }}
-                className={`menu-item ${
-                  selectedCategory === category ? "active" : ""
-                }`}
-              >
-                {category}
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* hidden deocamdata */}
+        {/* Meniul de categorii */}
+        <div
+          className="menu-categories"
+          style={{ display: menuOpen ? "block" : "none" }}
+        >
+          {categories.map((category) => (
+            <div
+              key={category}
+              onClick={() => handleCategorySelect(category)} // Închide meniul la selectare
+              style={{
+                borderBottom:
+                  selectedCategory === category ? "4px solid #d80000" : "none",
+              }}
+              className={`menu-item ${
+                selectedCategory === category ? "active" : ""
+              }`}
+            >
+              {category}
+            </div>
+          ))}
+        </div>
+
+        {/* Secțiunea de surse (ascunsă deocamdată) */}
         <div style={{ display: "none" }}>
           <button
             style={{ color: "red", padding: "0 10px" }}
@@ -106,7 +109,6 @@ const Menu = ({
             </button>
           ))}
         </div>
-        {/* hidden deocamdata */}
       </div>
     </div>
   );

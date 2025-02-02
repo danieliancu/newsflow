@@ -30,6 +30,7 @@ const Carousel = ({ items }) => {
           {items.map((item, index) => (
             <div key={index}>
               <div className="slick-art">
+                
                 <img
                   src={item.imgSrc}
                   alt={item.text || "Image"}
@@ -42,6 +43,7 @@ const Carousel = ({ items }) => {
                 />
 
                 <div className="degrade">
+                  <div class="supra">{item.source}</div>
                   <a
                     href={item.href}
                     target="_blank"
