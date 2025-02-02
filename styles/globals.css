@@ -580,6 +580,10 @@ button {
     z-index: 10;
 }
 
+.news-item-border {
+  border: none;  
+}
+
 @media only screen and (max-width: 1000px) {
   .container-all-carousel {
     width:100%;
@@ -588,6 +592,11 @@ button {
 
 
 @media only screen and (max-width: 600px) {
+  .news-item-border {
+    border-radius: 5px;
+    padding: 0 5px 5px 5px;
+    border: .5px solid black;  
+  }
   .top-top 
   {
     display: none !important;

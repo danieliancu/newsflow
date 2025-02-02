@@ -270,6 +270,8 @@ const handleReset = () => {
                   .map((item, index) => (
                     <div className="news-item" key={index} style={{ borderLeft: ".5px solid #d80000" }}>
                       <span className="bumb bumbSpecial">&#8226;</span>
+
+                      <span className="news-item-border">
                       {selectedSource === "all" && (
                         <strong className="news-source">{item.source}</strong>
                       )}
@@ -312,6 +314,7 @@ const handleReset = () => {
                           }
                         })()}
                       </p>
+                      </span>
                       {item.href && (
                         <a href={item.href} target="_blank" rel="noopener noreferrer">
                           <h3>{item.text}</h3>
