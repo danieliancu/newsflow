@@ -13,8 +13,7 @@ const App = () => {
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("Actualitate"); // Implicit "Actualitate"
   const [loading, setLoading] = useState(true);
-  const [isRotated, setIsRotated] = useState(false); // Stare pentru rotația SVG-ului
-  const [showScrollTop, setShowScrollTop] = useState(false); // Stare pentru săgeata de scroll-top
+  const [showScrollTop, setShowScrollTop] = useState(true); // Stare pentru săgeata de scroll-top
   // Starea pentru numărul de articole cu imagine afișate (după cele 4 din Carousel)
   const [visibleImageNewsCount, setVisibleImageNewsCount] = useState(20);
   const [isAutoplay, setIsAutoplay] = useState(true);
@@ -63,9 +62,7 @@ const handleReset = () => {
   }, 100); // delay de 100ms (poți ajusta dacă este necesar)
 };
 
-  const handleSvgClick = () => {
-    setIsRotated((prev) => !prev); // Inversează starea de rotație
-  };
+
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -118,7 +115,6 @@ const handleReset = () => {
     setSelectedSource("all"); // Resetează sursa la "all" când se schimbă categoria
     filterData("all", category);
     window.scrollTo({ top: 0, behavior: "smooth" });
-    setIsRotated(false); // Resetează rotația SVG-ului
   };
 
   // Filtrare în funcție de sursă și categorie – se resetează și numărul de articole vizibile
@@ -193,30 +189,6 @@ const handleReset = () => {
           {filteredData.filter((item) => !item.imgSrc).length > 0 && (
             <div className="container-news container-news-no-img">
               <div className="container-news-no-img-top">
-                <span
-                  className="caret-news-top"
-                  onClick={handleSvgClick}
-                  style={{ cursor: "pointer" }}
-                >
-                  <svg
-                    width="13"
-                    height="13"
-                    xmlns="http://www.w3.org/2000/svg"
-                    className={isRotated ? "rotated" : ""}
-                  >
-                    <polygon points="6,0 0,12 12,12" fill="white" />
-                  </svg>
-                  <span
-                    style={{
-                      fontSize: "14px",
-                      textTransform: "lowercase",
-                      fontWeight: "lighter",
-                      paddingLeft: "5px",
-                    }}
-                  >
-                    Apasă pentru {isRotated ? "a ascunde" : "a vizualiza"} newsflow
-                  </span>
-                </span>
                 
                 <span className="top-top">
                   <span style={{ color: "#d80000" }}>newsflow</span>
@@ -264,7 +236,7 @@ const handleReset = () => {
                 </span>
               </div>
               
-              <div className={`news-item-container ${isRotated ? "show-items" : "hide-items"}`}>
+              <div className="news-item-container show-items">
                 {filteredData
                   .filter((item) => !item.imgSrc)
                   .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -273,10 +245,6 @@ const handleReset = () => {
                       <span className="bumb bumbSpecial">&#8226;</span>
 
                       <span className="news-item-border">
-                      {selectedSource === "all" && (
-                        <strong className="news-source">{item.source}</strong>
-                      )}
-                      <span className="bumb" style={{ verticalAlign: "middle" }}>&#8226;</span>
                       <p
                         className="ago"
                         style={{
@@ -315,6 +283,15 @@ const handleReset = () => {
                           }
                         })()}
                       </p>
+
+                      <span className="bumb" style={{ verticalAlign: "middle" }}>&#8226;</span>
+
+
+                      {selectedSource === "all" && (
+                        <strong className="news-source">{item.source}</strong>
+                      )}
+
+
                       </span>
                       {item.href && (
                         <a href={item.href} target="_blank" rel="noopener noreferrer">
@@ -373,12 +350,8 @@ const handleReset = () => {
                           }
                         })()}
                       </div>
-                      <h3>{item.text}</h3>
+
                       <p className="ago">
-                        {selectedSource === "all" && (
-                          <strong className="news-source">{item.source}</strong>
-                        )}
-                        <span className="bumb">&#8226;</span>
                         {(() => {
                           const now = new Date();
                           const date = new Date(item.date);
@@ -410,7 +383,17 @@ const handleReset = () => {
                             return `Acum ${hourText}${minuteText ? ` și ${minuteText}` : ""}`;
                           }
                         })()}
+                        <span className="bumb">&#8226;</span>
+                        
+                        {selectedSource === "all" && (
+                          <strong className="news-source">{item.source}</strong>
+                        )}
+                        
                       </p>
+
+                      <h3>{item.text}</h3>
+
+
                     </a>
                   )}
                 </div>
@@ -435,10 +418,6 @@ const handleReset = () => {
                   <a href={item.href} target="_blank" rel="noopener noreferrer">
                     <h3>{item.text}</h3>
                     <p className="ago">
-                      {selectedSource === "all" && (
-                        <strong className="news-source">{item.source}</strong>
-                      )}
-                      <span className="bumb">&#8226;</span>
                       {(() => {
                         const now = new Date();
                         const date = new Date(item.date);
@@ -470,6 +449,13 @@ const handleReset = () => {
                           return `Acum ${hourText}${minuteText ? ` și ${minuteText}` : ""}`;
                         }
                       })()}
+
+                      <span className="bumb">&#8226;</span> 
+
+                      {selectedSource === "all" && (
+                        <strong className="news-source">{item.source}</strong>
+                      )}
+
                     </p>
                   </a>
                 )}

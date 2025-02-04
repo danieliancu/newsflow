@@ -52,8 +52,6 @@ const Carousel = ({ items }) => {
                   >
                     <h3 style={{ margin: "5px 0" }}>{item.text}</h3>
                     <p className="ago" style={{ color:"white", fontSize:"12px" }}>
-                      <strong className="news-source" style={{ padding:"0" }}>{item.source}</strong>
-                      <span className="bumb">&#8226;</span>
                       {(() => {
                           const now = new Date();
                           const date = new Date(item.date);
@@ -85,6 +83,8 @@ const Carousel = ({ items }) => {
                             return `Acum ${hourText}${minuteText ? ` și ${minuteText}` : ""}`;
                           }
                         })()}
+                        <span className="bumb">&#8226;</span>
+                        <strong className="news-source" style={{ padding:"0" }}>{item.source}</strong>
                     </p>
                   </a>
                 </div>
