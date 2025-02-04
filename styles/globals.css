@@ -287,9 +287,28 @@ input {
     font-weight: bold;
   }
 
+  .container h3 {
+      display: -webkit-box;
+      -webkit-line-clamp: 5; /* Numărul de rânduri dorit */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-height: 8em; /* Ajustează în funcție de font-size și line-height */
+      line-height: 1.5em; /* Ajustează pentru alinierea corectă */
+    
+    
+  }
+
   .container-news-no-img h3 {
     top: 15px;
     position: relative;
+    display: -webkit-box;
+    -webkit-line-clamp: 4; /* Numărul de rânduri dorit */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 7em; /* Ajustează în funcție de font-size și line-height */
+    line-height: 1.5em; /* Ajustează pentru alinierea corectă */
 
   }
 
@@ -765,7 +784,7 @@ button {
     height:auto;
     max-height: unset;
     background: white;
-    margin: 20px 0 !important;
+    margin: 10px 0 5px 0 !important;
     padding: 0;
   }
 
