@@ -741,9 +741,9 @@ button {
     margin-top:0px !important;
   }  
   .container-news {
-    padding:10px;
+    padding:12px 10px;
     overflow:hidden;
-    max-height: 170px; 
+    max-height: 174px; 
     width:100%;
     border-radius:0;
     box-shadow: none;
@@ -762,23 +762,22 @@ button {
   .container-news-no-img {
     height: auto !important;
     overflow: auto !important;
-    padding: 0;
     height:auto;
     max-height: unset;
     background: white;
     margin: 20px 0 !important;
-    padding: 20px 0;
+    padding: 0;
   }
 
   .container-news-no-img .news-item {
-    padding: 0 20px 20px 0;
+    padding: 20px 10px;
     border-bottom: none;
     display: inline-block;
     white-space: normal;
-    width: 250px;
+    width: 270px;
     vertical-align: top;
     height:155px;
-    border-left: .1px solid lightgrey !important; 
+    border-left: 8px solid #f0f0f0 !important; 
   }
 
   .container-news-no-img .news-item:first-child {
