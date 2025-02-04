@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaBars, FaTimes } from "react-icons/fa";
+import { FaBars, FaTimes, FaUser, FaSearch } from "react-icons/fa";
 
 const Menu = ({
   selectedSource,
@@ -8,7 +8,7 @@ const Menu = ({
   handleCategoryFilter,
   availableSources,
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false); // Starea pentru meniu
+  const [menuOpen, setMenuOpen] = useState(false);
   const categories = ["Actualitate", "Economie", "Sport", "Sănătate", "Monden"];
 
   useEffect(() => {
@@ -20,10 +20,7 @@ const Menu = ({
       }
     };
 
-    // Setăm valoarea inițială
     handleResize();
-
-    // Adăugăm și curățăm listener-ul
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -32,15 +29,9 @@ const Menu = ({
     setMenuOpen((prev) => !prev);
   };
 
-  const handleCategorySelect = (category) => {
-    handleCategoryFilter(category);
-    
-    // Închide meniul doar dacă ecranul este sub 600px
-    if (window.innerWidth < 600) {
-      setMenuOpen(false);
-    }
-
-    window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll sus după selectare
+  // Funcția care adaugă / elimină clasa pe body
+  const toggleSearchOnMobile = () => {
+    document.body.classList.toggle("search-open");
   };
 
   return (
@@ -65,8 +56,16 @@ const Menu = ({
               newsflow<span style={{ color: "#d80000" }}>.ro</span>
             </a>
           </h1>
+          <span className="top-right-mobile">
+            <FaUser className="login" style={{ fill: "white" }} />
+            {/* Aici se face togglingul pentru search */}
+            <FaSearch
+              className="search-mobile"
+              style={{ fill: "white" }}
+              onClick={toggleSearchOnMobile}
+            />
+          </span>
 
-          {/* Afișăm FaBars sau FaTimes în funcție de starea meniului */}
           {menuOpen ? (
             <FaTimes className="hamburger" onClick={toggleMenu} />
           ) : (
@@ -74,7 +73,6 @@ const Menu = ({
           )}
         </div>
 
-        {/* Meniul de categorii */}
         <div
           className="menu-categories"
           style={{ display: menuOpen ? "block" : "none" }}
@@ -82,7 +80,13 @@ const Menu = ({
           {categories.map((category) => (
             <div
               key={category}
-              onClick={() => handleCategorySelect(category)} // Închide meniul doar pe mobile
+              onClick={() => {
+                handleCategoryFilter(category);
+                if (window.innerWidth < 600) {
+                  setMenuOpen(false);
+                }
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
               style={{
                 borderBottom:
                   selectedCategory === category ? "4px solid #d80000" : "none",
@@ -96,7 +100,7 @@ const Menu = ({
           ))}
         </div>
 
-        {/* Secțiunea de surse (ascunsă deocamdată) */}
+        {/* Surse ascunse - doar ca exemplu */}
         <div style={{ display: "none" }}>
           <button
             style={{ color: "red", padding: "0 10px" }}

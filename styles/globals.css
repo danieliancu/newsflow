@@ -127,7 +127,9 @@ body {
   font-family: var(--title-font-family);
 }
 
-
+input {
+  outline: none;
+}
 
 
 * {
@@ -221,7 +223,8 @@ input {
 }
 
 .container-news:hover {
-  box-shadow: 0 0 10px grey;
+  box-shadow: 0 0 10px lightgrey;
+  opacity:.9;
 }
 
 .container-news strong
@@ -385,9 +388,9 @@ padding-left:0;
 
 .logo a {
   color: white;
-  font-family: 'Playfair Display', serif;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: -1px;
+  font-weight:bolder;
 }
 
 .logo select {
@@ -457,7 +460,7 @@ h1 {
   top: 0;
   background: white;
   padding: 20px;
-  z-index:2;
+  z-index:3;
   display: block;
   background: black;
 }
@@ -951,6 +954,15 @@ button {
   align-items: center;
 }
 
+.top-right-mobile {
+  width:45px;  
+  position:absolute;
+  right:35px;
+  display: flex; 
+  justify-content: space-between;
+  display: none;
+}
+
 .login {
   margin-right:30px !important;
 }
@@ -986,6 +998,10 @@ button {
   padding: 6px 0;
 }
 
+.login-container {
+  margin-right:30px !important;
+}
+
 @media only screen and (max-width: 1000px) {
   .search input {
     width:auto;
@@ -993,19 +1009,58 @@ button {
 }
 
 
-@media only screen and (max-width: 776px) {
-.top-right {
-  width: 100%;
-  justify-content: flex-end;
-}
-  .top-left {
+@media only screen and (max-width: 766px) {
+  .top-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .top-right-mobile {
+    display: flex;
+  }
+
+  .top-left,
+  .login-container {
     display: none;
+  }
+
+  .search {
+    display: block;
+    position: absolute;
+    z-index: 2;
+    top: -15vw;
+    left: 0;
+    width: 100%;
+  }
+
+  .search input {
+    width: 100%;
+    height: 50px;
+  }
+
+  .search svg {
+    position: absolute;
+    right: 0;
+    height: 100%;
+    width: 10%;
+  }
+
+  .top {
+    padding: 0;
+  }
+  
+  .login {
+    margin-right:0 !important;
   }
 }
 
 @media only screen and (max-width: 500px) { 
-  .login span {
-    display: none;
+  .logo {
+    font-size:7vw;
+  }
+  .giphy {
+    width:5vw !important;
+    height:5vw !important;
   }
 }
 
@@ -1141,4 +1196,20 @@ button {
     border-right: none;
   }
   
+}
+
+
+
+@media (max-width: 766px) {
+  .top .search {
+    /* animația pe mobil */
+    position: fixed;
+    top: -15vw;
+    transition: top 0.4s ease;
+    right: 1rem;
+  }
+
+  body.search-open .top .search {
+    top: 13vw;
+  }
 }

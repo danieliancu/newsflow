@@ -13,7 +13,7 @@ const App = () => {
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("Actualitate"); // Implicit "Actualitate"
   const [loading, setLoading] = useState(true);
-  const [showScrollTop, setShowScrollTop] = useState(true); // Stare pentru săgeata de scroll-top
+  const [showScrollTop, setShowScrollTop] = useState(false); // Stare pentru săgeata de scroll-top
   // Starea pentru numărul de articole cu imagine afișate (după cele 4 din Carousel)
   const [visibleImageNewsCount, setVisibleImageNewsCount] = useState(20);
   const [isAutoplay, setIsAutoplay] = useState(true);
@@ -317,7 +317,6 @@ const handleReset = () => {
                   {item.href && (
                     <a href={item.href} target="_blank" rel="noopener noreferrer">
                       <div className="supra" style={{ border:".5px solid black" }}>
-                        {item.source} <span className="bumb">&#8226;</span>
                         {(() => {
                           const now = new Date();
                           const date = new Date(item.date);
@@ -349,6 +348,7 @@ const handleReset = () => {
                             return `Acum ${hourText}${minuteText ? ` și ${minuteText}` : ""}`;
                           }
                         })()}
+                        <span className="bumb">&#8226;</span> {item.source} 
                       </div>
 
                       <p className="ago">
