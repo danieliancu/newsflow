@@ -1195,6 +1195,7 @@ button {
     top: -15vw;
     transition: top 0.4s ease;
     right: 1rem;
+    z-index: 3;
   }
 
   body.search-open .top .search {
