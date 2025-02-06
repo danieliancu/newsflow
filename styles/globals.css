@@ -260,7 +260,7 @@ input {
   position: sticky;
   top:60px;
   padding:10px 20px;
-  z-index: 9;
+  z-index: 2;
   margin-bottom: -10px !important;
   background: var(--background);
 }
