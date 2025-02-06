@@ -198,8 +198,9 @@ const handleReset = () => {
           )}
           
           {/* Secțiunea pentru articolele fără imagine */}
-          <p className="peScurt">PE SCURT <FaCaretRight style={{ display:"inline-block" }} /></p>
           {filteredData.filter((item) => !item.imgSrc).length > 0 && (
+            <>
+            <p className="peScurt">PE SCURT <FaCaretRight style={{ display:"inline-block" }} /></p>
             <div className="container-news container-news-no-img">
               <div className="container-news-no-img-top">
                 
@@ -315,6 +316,7 @@ const handleReset = () => {
                   ))}
               </div>
             </div>
+            </>
           )}
           
           {/* Afișăm articolele cu imagine care NU fac parte din Carousel */}
