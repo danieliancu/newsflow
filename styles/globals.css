@@ -69,7 +69,6 @@
 }
 
 
-
 /* Personalizare scrollbar */
 ::-webkit-scrollbar {
   width: 10px; /* Lățimea barei de scroll */
@@ -92,9 +91,6 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #555; /* Culoare mai închisă la hover */
 }
-
-
-
 
 
 
@@ -160,9 +156,6 @@ input {
 }
 
 
-
-
-
 /*  spinner  */
 
 .loading {
@@ -175,7 +168,6 @@ input {
   align-items: center;
   justify-content: center;
 }
-
 
 .spinner {
   display: inline-block;
@@ -199,11 +191,6 @@ input {
     left:-20px;
   } 
 }
-
-
-
-
-
 
 .container {
   display: flex;
@@ -234,7 +221,6 @@ input {
   font-weight: 100;
 }
 
-
 .container h3 {
   padding:10px 20px 20px 20px;
   color:var(--black);
@@ -246,14 +232,12 @@ input {
   font-weight: bold;
 }
 
-
 .ago {
   padding: 0 0 20px 20px;
   font-size: 12px;
   color: var(--black);
   font-weight:400;
 }  
-
 
 .peScurt,
 .ultimele
@@ -270,9 +254,16 @@ input {
 .peScurt {
   margin-top:10px !important;
   margin-bottom: -10px !important;
-
 }
 
+.ultimele {
+  position: sticky;
+  top:60px;
+  padding:10px 20px;
+  z-index: 9;
+  margin-bottom: -10px !important;
+  background: var(--background);
+}
 
 .container img {
   width:90%;
@@ -299,7 +290,6 @@ input {
 }
 
 @media only screen and (max-width: 600px) {
-  
   .peScurt, .ultimele {
     display: inline-block;
   }
@@ -318,8 +308,6 @@ input {
       text-overflow: ellipsis;
       max-height: 8em; /* Ajustează în funcție de font-size și line-height */
       line-height: 1.5em; /* Ajustează pentru alinierea corectă */
-    
-    
   }
 
   .container-news-no-img h3 {
@@ -332,13 +320,8 @@ input {
     text-overflow: ellipsis;
     max-height: 7em; /* Ajustează în funcție de font-size și line-height */
     line-height: 1.5em; /* Ajustează pentru alinierea corectă */
-
   }
-
 }
-
-
-
 
 
 .container-news-no-img h3,
@@ -349,14 +332,11 @@ input {
   line-height: 20px;
 }
 
-
-
 .container-news-no-img .news-source,
 .container-news-no-img .ago {
   display: inline;
   color: var(--black);
 }
-
 
 .container-news .news-source,
 .news-item .news-source
@@ -365,8 +345,6 @@ input {
   border-radius:5px;
   background: var(--background);
 }
-
-
 
 .news-source {
   font-weight: 400 !important;
@@ -399,8 +377,6 @@ padding-left:0;
   justify-content: space-between;
   padding: 10px 5px;
 }
-
-
 
 .logo {
   font-size:26px;
@@ -516,7 +492,6 @@ button {
     background-color: #f9f9f9;
   }
 }
-
 
 
 /* carusel  */
@@ -660,7 +635,6 @@ button {
   text-align: center;
 }
 
-
 .container-all-carousel {
   margin-bottom: 20px;
   border:15px solid white;
@@ -682,6 +656,7 @@ button {
   border: none;  
 }
 
+
 @media only screen and (max-width: 1000px) {
   .container-all-carousel {
     width:100%;
@@ -701,11 +676,9 @@ button {
     font-size: 16px;
   }
 
-
   .container-news-no-img-top {
     display: none;
   }
-
 
   .news-item-border {
     border-radius: 5px;
@@ -715,10 +688,12 @@ button {
     left:18px;
     top:0px;  
   }
+
   .top-top 
   {
     display: none !important;
   }
+
   .degrade {
     bottom: 0px !important;
   }
@@ -750,7 +725,6 @@ button {
     display: inline;
   }
   
-
   .menu {
     padding: 15px 20px;
     height: 60px;
@@ -833,7 +807,6 @@ button {
 }
 
 
-
 .menu-categories {
   font-family: 'Helvetica';
   font-size: 12px;
@@ -861,7 +834,6 @@ button {
 
 
 @media only screen and (max-width: 766px) { 
-
   .menu-categories {
     width:100px;
     position: absolute;
@@ -886,7 +858,6 @@ button {
     font-size: 24px;
     cursor: pointer;
   }
-
 }
 
 
@@ -994,7 +965,6 @@ button {
   font-size: 16px;
 }
 
-
 .search input {
   padding: 5px;
   margin-right: 10px;
@@ -1012,7 +982,6 @@ button {
   vertical-align: middle;
   width: 27px;
 }
-
 
 .top-left a {
   border-bottom: 4px solid var(--red);
@@ -1057,6 +1026,7 @@ button {
   .search input {
     width: 100%;
     height: 50px;
+    padding: 15px;
   }
 
   .search svg {
@@ -1085,7 +1055,6 @@ button {
     height:5vw !important;
   }
 }
-
 
 .load-more-button {
   margin: 40px 25% !important;
@@ -1117,8 +1086,6 @@ button {
     display: inline-block;
   }
 }
-
-
 
 
 
@@ -1221,7 +1188,6 @@ button {
 }
 
 
-
 @media (max-width: 766px) {
   .top .search {
     /* animația pe mobil */
@@ -1232,6 +1198,6 @@ button {
   }
 
   body.search-open .top .search {
-    top: 13vw;
+    top: 60px;
   }
 }
