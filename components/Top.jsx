@@ -5,7 +5,7 @@ const Top = () => {
   return (
     <div className="top">
       <div className="top-left">
-        <a href="">click AICI</a> pentru a te înscrie la newsletter.
+        <a href="#footer">click AICI</a> pentru a te înscrie la newsletter.
       </div>
       <div className="top-right">
         <div className="login-container">

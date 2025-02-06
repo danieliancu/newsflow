@@ -3,7 +3,7 @@ import Carousel from "./Carousel";
 import Menu from "./Menu";
 import Top from "./Top";
 import Footer from "./Footer";
-import { FaToggleOn, FaToggleOff, FaSync } from "react-icons/fa";
+import { FaToggleOn, FaToggleOff, FaCaretRight } from "react-icons/fa";
 import { Analytics } from '@vercel/analytics/react';
 
 const App = () => {
@@ -21,25 +21,24 @@ const App = () => {
   useEffect(() => {
     let intervalId;
   
-    if (isAutoplay) {
+    const isSmallScreen = window.innerWidth < 600; // 📌 Verifică dimensiunea ecranului
+  
+    if (isAutoplay && !isSmallScreen) {
       intervalId = setInterval(() => {
         const container = document.querySelector('.news-item-container');
         if (container) {
           const currentTop = parseInt(container.style.top || '0', 10);
           container.style.top = `${currentTop - 1}px`;
-  
-          // Reset
-          // if (Math.abs(currentTop) > resetThreshold) {
-          //   container.style.top = '0';
-          // }
         }
-      }, 50); // O ajustare la fiecare 20ms creează o mișcare lină
+      }, 50);
     }
   
     return () => {
       clearInterval(intervalId);
     };
   }, [isAutoplay]);
+  
+  
 
   // Funcția de toggle: inversează starea curentă
   const toggleAutoplay = () => {
@@ -88,6 +87,13 @@ const handleReset = () => {
     fetchAllData();
   }, []);
 
+
+  const handleLoadMoreOnScroll = () => {
+    setVisibleImageNewsCount((prevCount) => prevCount + 20);
+  };
+  
+
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 200) {
@@ -95,11 +101,17 @@ const handleReset = () => {
       } else {
         setShowScrollTop(false);
       }
+  
+      // Încarcă mai multe articole cu imagine când ajungi aproape de finalul paginii
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 500) {
+        handleLoadMoreOnScroll();
+      }
     };
-
+  
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+  
 
   const handleScrollTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -120,19 +132,19 @@ const handleReset = () => {
   // Filtrare în funcție de sursă și categorie – se resetează și numărul de articole vizibile
   const filterData = (source, category, data = allData) => {
     let filtered = data;
-
+  
     if (source !== "all") {
       filtered = filtered.filter((item) => item.source === source);
     }
-
+  
     if (category) {
       filtered = filtered.filter((item) => item.cat === category);
     }
-
+  
     setFilteredData(filtered);
-    // Resetăm contorul de paginare la fiecare filtrare nouă
-    setVisibleImageNewsCount(20);
+    setVisibleImageNewsCount(20); // 📌 Resetăm contorul pentru articolele cu imagini
   };
+  
 
   const getSourcesForCategory = () => {
     const articlesInCategory = allData.filter((item) => item.cat === selectedCategory);
@@ -186,12 +198,13 @@ const handleReset = () => {
           )}
           
           {/* Secțiunea pentru articolele fără imagine */}
+          <p className="peScurt">PE SCURT <FaCaretRight style={{ display:"inline-block" }} /></p>
           {filteredData.filter((item) => !item.imgSrc).length > 0 && (
             <div className="container-news container-news-no-img">
               <div className="container-news-no-img-top">
                 
                 <span className="top-top">
-                  <span style={{ color: "#d80000" }}>newsflow</span>
+                  <span style={{ color: "#d80000" }}>pe scurt</span>
                   <span
                     onClick={toggleAutoplay}
                     style={{ cursor: "pointer", marginLeft: "10px" }}
@@ -307,7 +320,9 @@ const handleReset = () => {
           {/* Afișăm articolele cu imagine care NU fac parte din Carousel */}
           {sortedImageNews.length > 4 ? (
             <>
+              <p className="ultimele">ULTIMELE ȘTIRI <FaCaretRight style={{ display:"inline-block" }} /></p>
               {sortedImageNews.slice(4, visibleImageNewsCount).map((item, index) => (
+                
                 <div className="container-news" key={index}>
                   <img
                     src={item.imgSrc}
@@ -398,12 +413,7 @@ const handleReset = () => {
                   )}
                 </div>
               ))}
-              {/* Dacă mai există articole de afișat, se arată butonul de "Vezi mai multe știri" */}
-              {sortedImageNews.length > visibleImageNewsCount && (
-                <button onClick={handleLoadMore} className="load-more-button">
-                  Vezi mai multe știri
-                </button>
-              )}
+
             </>
           ) : (
             // Dacă sunt 4 sau mai puține articole cu imagine, le afișăm pe toate fără Carousel

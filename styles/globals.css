@@ -255,6 +255,24 @@ input {
 }  
 
 
+.peScurt,
+.ultimele
+{
+  width:100%;
+  text-align: left;
+  padding-left:20px;
+  display:none;
+  color: var(--red); 
+  font-size:14px;
+  font-weight: bold;
+}
+
+.peScurt {
+  margin-top:10px !important;
+  margin-bottom: -10px !important;
+
+}
+
 
 .container img {
   width:90%;
@@ -282,7 +300,9 @@ input {
 
 @media only screen and (max-width: 600px) {
   
-  
+  .peScurt, .ultimele {
+    display: inline-block;
+  }
   
   .container-news-no-img h3,
   .container h3
@@ -306,7 +326,7 @@ input {
     top: 15px;
     position: relative;
     display: -webkit-box;
-    -webkit-line-clamp: 4; /* Numărul de rânduri dorit */
+    -webkit-line-clamp: 3; /* Numărul de rânduri dorit */
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -732,7 +752,8 @@ button {
   
 
   .menu {
-    padding: 10px 20px;
+    padding: 15px 20px;
+    height: 60px;
   }
 
   .slick-list {
@@ -862,7 +883,7 @@ button {
     position: absolute;
     right: 0px;
     top: 5px;
-    font-size: 20px;
+    font-size: 24px;
     cursor: pointer;
   }
 
@@ -955,9 +976,9 @@ button {
 }
 
 .top-right-mobile {
-  width:45px;  
+  width:65px;  
   position:absolute;
-  right:35px;
+  right:40px;
   display: flex; 
   justify-content: space-between;
   display: none;
@@ -1056,7 +1077,8 @@ button {
 
 @media only screen and (max-width: 500px) { 
   .logo {
-    font-size:7vw;
+    font-size:6vw;
+    padding-top:2px;
   }
   .giphy {
     width:5vw !important;

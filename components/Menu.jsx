@@ -57,11 +57,11 @@ const Menu = ({
             </a>
           </h1>
           <span className="top-right-mobile">
-            <FaUser className="login" style={{ fill: "white" }} />
+            <FaUser className="login" style={{ fill: "white", fontSize: "24px" }} />
             {/* Aici se face togglingul pentru search */}
             <FaSearch
               className="search-mobile"
-              style={{ fill: "white" }}
+              style={{ fill: "white", fontSize: "24px" }}
               onClick={toggleSearchOnMobile}
             />
           </span>
@@ -119,6 +119,7 @@ const Menu = ({
             </button>
           ))}
         </div>
+        
       </div>
     </div>
   );
