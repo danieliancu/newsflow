@@ -89,6 +89,16 @@ const sitesConfig = {
     tags: [{ tag: "div.article", contentSelector: "h3.article__title" }],
     cat: "Sănătate",
   },
+  totuldespremame: {
+    url: "https://totuldespremame.ro/",
+    tags: [
+      { tag: "div.post-vertical", contentSelector: "h3.post-title" },
+      { tag: "div.post", contentSelector: "h2.post-title" }, 
+      { tag: "div.post-horizontal", contentSelector: "h3.post-title" },    
+      { tag: "div.post", contentSelector: "h3.post-title" },   
+    ],
+    cat: "Mame și copii",
+  },    
   viva: {
     url: "https://viva.ro",
     tags: [

@@ -175,7 +175,9 @@ const handleReset = () => {
         handleFilter={handleFilter}
         handleCategoryFilter={handleCategoryFilter}
         availableSources={getSourcesForCategory()}
+        availableCategories={Array.from(new Set(allData.map(item => item.cat)))} // 🔥 Generează categorii unice
       />
+
       
       {loading && (
         <div className="loading">

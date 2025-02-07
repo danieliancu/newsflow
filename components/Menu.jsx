@@ -7,9 +7,10 @@ const Menu = ({
   handleFilter,
   handleCategoryFilter,
   availableSources,
+  availableCategories,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const categories = ["Actualitate", "Economie", "Sport", "Sănătate", "Monden"];
+  const categories = availableCategories || [];
 
   useEffect(() => {
     const handleResize = () => {
