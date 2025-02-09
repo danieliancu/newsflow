@@ -8,9 +8,22 @@ const Menu = ({
   handleCategoryFilter,
   availableSources,
   availableCategories,
+  // Props pentru resetare căutare:
+  setSearchTerm,
+  setIsSearching,
+  setSubmittedSearchTerm
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
-  const categories = availableCategories || [];
+
+  // Sortează dinamic categoriile
+  const categories = (availableCategories || []).slice().sort((a, b) =>
+    a.localeCompare(b)
+  );
+
+  // Sortează dinamic sursele
+  const sources = (availableSources || []).slice().sort((a, b) =>
+    a.localeCompare(b)
+  );
 
   useEffect(() => {
     const handleResize = () => {
@@ -30,9 +43,16 @@ const Menu = ({
     setMenuOpen((prev) => !prev);
   };
 
-  // Funcția care adaugă / elimină clasa pe body
+  // Toggle pentru search bar pe mobil (dacă ai un CSS dedicat .search-open)
   const toggleSearchOnMobile = () => {
     document.body.classList.toggle("search-open");
+  };
+
+  // Funcție care anulează căutarea și golește inputul
+  const resetSearch = () => {
+    setSearchTerm("");           
+    setIsSearching(false);       
+    setSubmittedSearchTerm("");  
   };
 
   return (
@@ -59,7 +79,6 @@ const Menu = ({
           </h1>
           <span className="top-right-mobile">
             <FaUser className="login" style={{ fill: "white", fontSize: "24px" }} />
-            {/* Aici se face togglingul pentru search */}
             <FaSearch
               className="search-mobile"
               style={{ fill: "white", fontSize: "24px" }}
@@ -74,6 +93,7 @@ const Menu = ({
           )}
         </div>
 
+        {/* LISTA CATEGORII */}
         <div
           className="menu-categories"
           style={{ display: menuOpen ? "block" : "none" }}
@@ -82,7 +102,9 @@ const Menu = ({
             <div
               key={category}
               onClick={() => {
+                resetSearch();
                 handleCategoryFilter(category);
+
                 if (window.innerWidth < 600) {
                   setMenuOpen(false);
                 }
@@ -92,35 +114,38 @@ const Menu = ({
                 borderBottom:
                   selectedCategory === category ? "4px solid #d80000" : "none",
               }}
-              className={`menu-item ${
-                selectedCategory === category ? "active" : ""
-              }`}
+              className={`menu-item ${selectedCategory === category ? "active" : ""}`}
             >
               {category}
             </div>
           ))}
         </div>
 
-        {/* Surse ascunse - doar ca exemplu */}
+        {/* LISTA SURSE (dacă vrei să o afișezi) */}
         <div style={{ display: "none" }}>
           <button
             style={{ color: "red", padding: "0 10px" }}
-            onClick={() => handleFilter("all")}
+            onClick={() => {
+              resetSearch();
+              handleFilter("all");
+            }}
             className={selectedSource === "all" ? "active" : ""}
           >
             Toate sursele
           </button>
-          {availableSources.map((source) => (
+          {sources.map((source) => (
             <button
               key={source}
-              onClick={() => handleFilter(source)}
+              onClick={() => {
+                resetSearch();
+                handleFilter(source);
+              }}
               className={selectedSource === source ? "active" : ""}
             >
               {source}
             </button>
           ))}
         </div>
-        
       </div>
     </div>
   );

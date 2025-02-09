@@ -772,6 +772,10 @@ button {
     display: none;
   }
 
+  .news-source {
+    background: transparent !important;
+  }
+
   .container-news strong {
     padding:0;
   }
@@ -838,7 +842,7 @@ button {
     width:100px;
     position: absolute;
     background: black;
-    top: 40px;
+    top: 60px;
     width:100%;
     display: none;
     left:0;
@@ -1191,7 +1195,7 @@ button {
 @media (max-width: 766px) {
   .top .search {
     /* animația pe mobil */
-    position: fixed;
+    position: fixed !important;
     top: -15vw;
     transition: top 0.4s ease;
     right: 1rem;
@@ -1200,5 +1204,91 @@ button {
 
   body.search-open .top .search {
     top: 60px;
+  }
+}
+
+
+
+
+
+/* Search results */
+
+.search-results {
+    max-width: 1260px;
+    margin: auto !important;
+    margin-top: 50px !important;
+    padding:0 20px;
+}
+
+.search-results .container-news {
+  padding:20px;
+  display: flex;
+  max-height:200px !important;
+  width:32%;
+}
+
+.searchImg {
+  min-width: 40%;
+  height:100%;
+  padding-right: 20px;
+}
+
+
+.no-results {
+  font-size: 24px;
+  padding:60px 20px 0px 20px;
+  margin: auto !important;
+  max-width: 1240px;
+}
+
+.search-results h1 {
+  font-size:24px;
+  padding:20px 0;
+} 
+
+.search-results h3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4; /* Numărul de rânduri dorit */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-results .ago {
+  padding: 0 0 20px 0;
+  display: block !important;
+}
+
+.search-results .ago .news-source {
+  background: var(--background) !important;
+}
+
+
+
+.searchImg img {
+  height:100%;
+  object-fit: cover !important;
+}
+
+.catSearch
+{
+  width:100%;
+  text-align: left;
+  padding:20px 0;
+  color: var(--red); 
+  font-size:14px;
+  font-weight: bold;
+}
+
+
+@media (max-width: 1000px) {
+  .search-results .container-news {
+    width:49%;
+  }
+}
+
+@media (max-width: 767px) {
+  .search-results .container-news {
+    width:100%;
   }
 }
