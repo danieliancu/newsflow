@@ -82,15 +82,16 @@ const App = () => {
 
   const sortedImageNews = useMemo(() => {
     return filteredData
-      .filter((item) => item.imgSrc)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [filteredData]);
-
-  const textNews = useMemo(() => {
-    return filteredData
-      .filter((item) => !item.imgSrc)
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [filteredData]);
+        .filter((item) => item.imgSrc && item.cat === selectedCategory)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }, [filteredData, selectedCategory]);
+    
+    const textNews = useMemo(() => {
+      return filteredData
+        .filter((item) => !item.imgSrc && item.cat === selectedCategory)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }, [filteredData, selectedCategory]);
+  
 
   return (
     <div>
