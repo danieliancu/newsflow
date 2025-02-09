@@ -20,6 +20,8 @@ const App = () => {
   const [selectedCategory, setSelectedCategory] = useState("Actualitate");
   const [loading, setLoading] = useState(true);
   const [isAutoplay, setIsAutoplay] = useState(true);
+  
+
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -131,7 +133,7 @@ const App = () => {
         <div className="container grid-layout">
           {sortedImageNews.length > 4 && <Carousel key={selectedSource} items={sortedImageNews.slice(0, 4)} />}
 
-          {textNews.length > 0 && (
+          {textNews.length > 8 && (
             <>
               <p className="peScurt">
                 PE SCURT <FaCaretRight style={{ display:"inline-block" }} />
@@ -166,9 +168,16 @@ const App = () => {
               </div>
             </>
           )}
-          <p className="ultimele">
-            ULTIMELE ȘTIRI <FaCaretRight style={{ display:"inline-block" }} />
-          </p>
+{loading ? (
+  <span style={{ textAlign:"center", width:"100%", display:"inline-block", color:"var(--red)", paddingBottom:"20px", fontSize:"14px", fontWeight:"bold" }}>
+    SE ÎNCARCĂ ULTIMELE ȘTIRI...
+  </span>
+) : (
+  <p className="ultimele">
+    ULTIMELE ȘTIRI <FaCaretRight style={{ display:"inline-block" }} />
+  </p>
+)}
+
           {sortedImageNews.slice(4).map((item, index) => (
             <div className="container-news" key={index}>
               <img src={item.imgSrc} alt={item.text || "Image"} className="news-image" />

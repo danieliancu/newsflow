@@ -350,6 +350,10 @@ input {
   font-weight: 400 !important;
 }
 
+.slick-art .news-source {
+  padding:0 !important
+}
+
 .container-news-no-img .ago {
 padding-left:0;
 }
