@@ -643,6 +643,7 @@ button {
   margin-bottom: 20px;
   border:15px solid white;
   border-radius: 10px;
+  background: white;
 }
 
 .degrade {
@@ -778,6 +779,7 @@ button {
 
   .news-source {
     background: transparent !important;
+    padding:2px 0 !important;
   }
 
   .container-news strong {

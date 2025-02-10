@@ -72,28 +72,49 @@ const sitesConfig = \{\par
     tags: [\{ tag: "div.banner-post-two", contentSelector: "h2.post-title" \}],\par
     cat: "Actualitate",\par
   \},\par
+  adevarul: \{\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://adevarul.ro }}{\fldrslt{https://adevarul.ro\ul0\cf0}}}}\f0\fs22 ",\par
+    tags: [\{ tag: "div.container", contentSelector: "div.svelte-4dr2hm" \}],\par
+    cat: "Actualitate",\par
+  \},  \par
+  observatornews: \{\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://observatornews.ro }}{\fldrslt{https://observatornews.ro\ul0\cf0}}}}\f0\fs22 ",\par
+    tags: [\par
+      \{ tag: "div.item.breaking-news-last", contentSelector: "span.stire-h3" \}, // Breaking news\par
+      \{ tag: "div.stire", contentSelector: "h3" \}, // Articole standard\par
+      \{ tag: "div.stire-simpla", contentSelector: "span.stire-h3" \} // \f1\u536?tiri simple\par
+    ],\par
+    cat: "Actualitate",\par
+  \},  \par
   gsp: \{\par
-    url: "{{\field{\*\fldinst{HYPERLINK https://gsp.ro }}{\fldrslt{https://gsp.ro\ul0\cf0}}}}\f0\fs22 ",\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://gsp.ro }}{\fldrslt{https://gsp.ro\ul0\cf0}}}}\f1\fs22 ",\par
     tags: [\{ tag: "div.news-item", contentSelector: "h2" \}],\par
     cat: "Sport",\par
   \},          \par
   prosport: \{\par
-    url: "{{\field{\*\fldinst{HYPERLINK https://prosport.ro }}{\fldrslt{https://prosport.ro\ul0\cf0}}}}\f0\fs22 ",\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://prosport.ro }}{\fldrslt{https://prosport.ro\ul0\cf0}}}}\f1\fs22 ",\par
     tags: [\{ tag: "div.article--wide", contentSelector: "h2.article__title" \}],\par
     cat: "Sport",\par
   \},   \par
   fanatik: \{\par
-    url: "{{\field{\*\fldinst{HYPERLINK https://fanatik.ro }}{\fldrslt{https://fanatik.ro\ul0\cf0}}}}\f0\fs22 ",\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://fanatik.ro }}{\fldrslt{https://fanatik.ro\ul0\cf0}}}}\f1\fs22 ",\par
     tags: [\{ tag: "div.article", contentSelector: "h3.article__title" \}],\par
     cat: "Sport",\par
   \},   \par
   csid: \{\par
-    url: "{{\field{\*\fldinst{HYPERLINK https://csid.ro }}{\fldrslt{https://csid.ro\ul0\cf0}}}}\f0\fs22 ",\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://csid.ro }}{\fldrslt{https://csid.ro\ul0\cf0}}}}\f1\fs22 ",\par
     tags: [\{ tag: "div.article", contentSelector: "h3.article__title" \}],\par
-    cat: "S\f1\'e3n\'e3tate",\par
+    cat: "S\'e3n\'e3tate",\par
   \},\par
-totuldespremame: \{\par
-    url: "{{\field{\*\fldinst{HYPERLINK https://totuldespremame.ro/ }}{\fldrslt{https://totuldespremame.ro/\ul0\cf0}}}}\f1\fs22 ",\par
+  clicksanatate: \{\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://clicksanatate.ro }}{\fldrslt{https://clicksanatate.ro\ul0\cf0}}}}\f1\fs22 ",\par
+    tags: [\par
+      \{ tag: "div.entry.co-3.svelte-1wok1io", contentSelector: "a.title.svelte-1wok1io" \}\par
+    ],\par
+    cat: "S\'e3n\'e3tate",\par
+  \},  \par
+  totuldespremame: \{\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://totuldespremame.ro }}{\fldrslt{https://totuldespremame.ro\ul0\cf0}}}}\f1\fs22 ",\par
     tags: [\par
       \{ tag: "div.post-vertical", contentSelector: "h3.post-title" \},\par
       \{ tag: "div.post", contentSelector: "h2.post-title" \}, \par
@@ -102,6 +123,16 @@ totuldespremame: \{\par
     ],\par
     cat: "Mame \u537?i copii",\par
   \}, \par
+  superbebe: \{\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://superbebe.ro }}{\fldrslt{https://superbebe.ro\ul0\cf0}}}}\f1\fs22 ",\par
+    tags: [\{ tag: "div.td_module_mx3", contentSelector: "h3.entry-title" \}],\par
+    cat: "Mame \u537?i copii",\par
+  \},   \par
+  desprecopii: \{\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://desprecopii.com/noutati }}{\fldrslt{https://desprecopii.com/noutati\ul0\cf0}}}}\f1\fs22 ",\par
+    tags: [\{ tag: ".blog-list div.item", contentSelector: "h3" \}],\par
+    cat: "Mame \u537?i copii",\par
+  \},     \par
   viva: \{\par
     url: "{{\field{\*\fldinst{HYPERLINK https://viva.ro }}{\fldrslt{https://viva.ro\ul0\cf0}}}}\f1\fs22 ",\par
     tags: [\par
@@ -117,7 +148,14 @@ totuldespremame: \{\par
       \{ tag: "div.article", contentSelector: "h2.article__title" \},      \par
     ],\par
     cat: "Monden",\par
-  \},                    \par
+  \},\par
+  okmagazine: \{\par
+    url: "{{\field{\*\fldinst{HYPERLINK https://okmagazine.ro }}{\fldrslt{https://okmagazine.ro\ul0\cf0}}}}\f1\fs22 ",\par
+    tags: [\par
+      \{ tag: "div.entry.co-3.svelte-1ds0vto", contentSelector: "a.title.svelte-1ds0vto" \}\par
+    ],\par
+    cat: "Monden",\par
+  \},  \par
 \};\par
 \par
 const gotoWithRetry = async (page, url, retries = 3) => \{\par
@@ -154,22 +192,44 @@ const scrapeTags = async (page, tags, source) => \{\par
 \par
           // Extrage imaginea\par
           let imgSrc = null;\par
-          const pictureElement = el.querySelector("picture");\par
-          if (pictureElement) \{\par
-            const sourceElement = pictureElement.querySelector("source");\par
-            if (sourceElement) \{\par
-              imgSrc = sourceElement.getAttribute("srcset");\par
-            \}\par
 \par
-            const imgElement = pictureElement.querySelector("img");\par
-            if (!imgSrc && imgElement) \{\par
+          if (source === "adevarul") \{\par
+            // Pentru adevarul.ro, lu\'e3m direct din <img>\par
+            const imgElement = el.querySelector("img");\par
+            if (imgElement) \{\par
               imgSrc = imgElement.getAttribute("src");\par
             \}\par
-          \}\par
+          \} else if (source === "observatornews") \{\par
+            // Special pentru observatornews.ro, imaginea este \f0\'een <figure> img\par
+            const imgElement = el.querySelector("figure img");\par
+            if (imgElement) \{\par
+              imgSrc = imgElement.getAttribute("src");\par
+            \}\par
+          \} else if (source === "clicksanatate" || source === "okmagazine") \{\par
+            // Special pentru clicksanatate.ro \f1\u537?i okmagazine.ro, imaginea este \f0\'een <picture> img\par
+            const imgElement = el.querySelector("a.image picture img");\par
+            if (imgElement) \{\par
+              imgSrc = imgElement.getAttribute("src");\par
+            \}\par
+          \} else \{\par
+            // Standard pentru alte site-uri: \'eencerc\f1\'e3m <picture> \u537?i <img>\par
+            const pictureElement = el.querySelector("picture");\par
+            if (pictureElement) \{\par
+              const sourceElement = pictureElement.querySelector("source");\par
+              if (sourceElement) \{\par
+                imgSrc = sourceElement.getAttribute("srcset");\par
+              \}\par
 \par
-          if (!imgSrc) \{\par
-            const imgElement = el.querySelector("img");\par
-            imgSrc = imgElement?.getAttribute("src") || null;\par
+              const imgElement = pictureElement.querySelector("img");\par
+              if (!imgSrc && imgElement) \{\par
+                imgSrc = imgElement.getAttribute("src");\par
+              \}\par
+            \}\par
+\par
+            if (!imgSrc) \{\par
+              const imgElement = el.querySelector("img");\par
+              imgSrc = imgElement?.getAttribute("src") || null;\par
+            \}\par
           \}\par
 \par
           // Exclude imaginile inline sau cele de tip Base64\par
@@ -177,23 +237,43 @@ const scrapeTags = async (page, tags, source) => \{\par
             imgSrc = null;\par
           \}\par
 \par
-          // Preia titlul \u537?i link-ul articolului\par
-          const contentElement = el.querySelector(contentSelector);\par
-          const link = contentElement ? contentElement.querySelector("a") : null;\par
+          // Preia titlul \u537?i link-ul articolului pentru site-urile standard\par
+          let contentElement = el.querySelector(contentSelector);\par
+          let link = contentElement ? contentElement.querySelector("a") : null;\par
+          let titleText = contentElement ? contentElement.textContent.trim() : null;\par
+\par
+\par
+          // Special pentru observatornews.ro\par
+          if (source === "observatornews") \{\par
+            if (el.matches("div.item.breaking-news-last")) \{\par
+              link = el.querySelector("a.full-link");\par
+            \} else if (el.matches("div.stire")) \{\par
+              link = el.querySelector("a.full-link");\par
+            \} else if (el.matches("div.stire-simpla")) \{\par
+              link = el.querySelectorAll("a")[1]; // Al doilea <a> con\u539?ine link-ul corect\par
+            \}\par
+          \}          \par
+\par
+\par
+          // Special pentru clicksanatate.ro \u537?i okmagazine.ro -> titlul este \f0\'een atributul title\par
+          if (source === "clicksanatate" || source === "okmagazine") \{\par
+            link = el.querySelector("a.title");\par
+            titleText = link ? link.getAttribute("title") : null;\par
+          \}\par
 \par
           return \{\par
             imgSrc: imgSrc,\par
-            text: contentElement ? contentElement.textContent.trim() : null,\par
+            text: titleText,\par
             href: link ? link.href : null,\par
-            category: category, // Adaug\'e3 categoria la rezultatele finale\par
+            category: category,\par
           \};\par
         \}),\par
       contentSelector,\par
-      source // Trece sursa ca parametru\par
+      source\par
     );\par
 \par
     elements\par
-      .filter((element) => element !== null) // Elimin\'e3 articolele excluse\par
+      .filter((element) => element !== null) // Elimin\f1\'e3 articolele excluse\par
       .forEach((element) => \{\par
         if (element.href && !seenLinks.has(element.href)) \{\par
           seenLinks.add(element.href);\par
@@ -204,6 +284,8 @@ const scrapeTags = async (page, tags, source) => \{\par
 \par
   return results;\par
 \};\par
+\par
+\par
 \par
 \par
 \par
