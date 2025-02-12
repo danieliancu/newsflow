@@ -25,8 +25,10 @@ const sitesConfig = {
   },
   spotmedia: {
     url: "https://spotmedia.ro",
-    tags: [{ tag: "div.jet-smart-listing__post", contentSelector: "div.mbm-h5" }],
-    tags: [{ tag: "div.jet-smart-listing__post", contentSelector: "div.mbm-h6" }],
+    tags: [
+      { tag: "div.jet-smart-listing__post", contentSelector: "div.mbm-h5" },
+      { tag: "div.jet-smart-listing__post", contentSelector: "div.mbm-h6" }
+    ],
     cat: "Actualitate",
   },
   ziare: {
@@ -153,6 +155,20 @@ const sitesConfig = {
     ],
     cat: "Monden",
   },  
+  agrobiznes: {
+    url: "https://agrobiznes.ro",
+    tags: [
+      { tag: "div.td_module_flex", contentSelector: "h3.entry-title" }
+    ],
+    cat: "Agricultură",
+  }, 
+  agrointel: {
+    url: "https://agrointel.ro",
+    tags: [
+      { tag: "a.excerpt", contentSelector: "b cite" }
+    ],
+    cat: "Agricultură",
+  },      
 };
 
 const gotoWithRetry = async (page, url, retries = 3) => {
@@ -170,114 +186,130 @@ const gotoWithRetry = async (page, url, retries = 3) => {
 
 
 const scrapeTags = async (page, tags, source) => {
-  const results = [];
   const seenLinks = new Set();
 
-  for (const { tag, contentSelector } of tags) {
-    const elements = await page.$$eval(
-      tag,
-      (elements, contentSelector, source) =>
-        elements.map((el) => {
-          // Verifică categoria
-          const categoryElement = el.querySelector(".article__category");
-          const category = categoryElement ? categoryElement.textContent.trim() : null;
-
-          // Aplică filtrul pentru categoria "Sport" doar pentru sursa "fanatik"
-          if (source === "fanatik" && category !== "Sport") {
-            return null;
-          }
-
-          // Extrage imaginea
-          let imgSrc = null;
-
-          if (source === "adevarul") {
-            // Pentru adevarul.ro, luăm direct din <img>
-            const imgElement = el.querySelector("img");
-            if (imgElement) {
-              imgSrc = imgElement.getAttribute("src");
-            }
-          } else if (source === "observatornews") {
-            // Special pentru observatornews.ro, imaginea este în <figure> img
-            const imgElement = el.querySelector("figure img");
-            if (imgElement) {
-              imgSrc = imgElement.getAttribute("src");
-            }
-          } else if (source === "clicksanatate" || source === "okmagazine") {
-            // Special pentru clicksanatate.ro și okmagazine.ro, imaginea este în <picture> img
-            const imgElement = el.querySelector("a.image picture img");
-            if (imgElement) {
-              imgSrc = imgElement.getAttribute("src");
-            }
-          } else {
-            // Standard pentru alte site-uri: încercăm <picture> și <img>
-            const pictureElement = el.querySelector("picture");
-            if (pictureElement) {
-              const sourceElement = pictureElement.querySelector("source");
-              if (sourceElement) {
-                imgSrc = sourceElement.getAttribute("srcset");
-              }
-
-              const imgElement = pictureElement.querySelector("img");
-              if (!imgSrc && imgElement) {
-                imgSrc = imgElement.getAttribute("src");
-              }
-            }
-
-            if (!imgSrc) {
-              const imgElement = el.querySelector("img");
-              imgSrc = imgElement?.getAttribute("src") || null;
-            }
-          }
-
-          // Exclude imaginile inline sau cele de tip Base64
-          if (imgSrc?.startsWith("data:image")) {
-            imgSrc = null;
-          }
-
-          // Preia titlul și link-ul articolului pentru site-urile standard
-          let contentElement = el.querySelector(contentSelector);
-          let link = contentElement ? contentElement.querySelector("a") : null;
-          let titleText = contentElement ? contentElement.textContent.trim() : null;
-
-
-          // Special pentru observatornews.ro
-          if (source === "observatornews") {
-            if (el.matches("div.item.breaking-news-last")) {
-              link = el.querySelector("a.full-link");
-            } else if (el.matches("div.stire")) {
-              link = el.querySelector("a.full-link");
-            } else if (el.matches("div.stire-simpla")) {
-              link = el.querySelectorAll("a")[1]; // Al doilea <a> conține link-ul corect
-            }
-          }          
-
-
-          // Special pentru clicksanatate.ro și okmagazine.ro -> titlul este în atributul title
-          if (source === "clicksanatate" || source === "okmagazine") {
-            link = el.querySelector("a.title");
-            titleText = link ? link.getAttribute("title") : null;
-          }
-
-          return {
-            imgSrc: imgSrc,
-            text: titleText,
-            href: link ? link.href : null,
-            category: category,
-          };
-        }),
-      contentSelector,
-      source
-    );
-
-    elements
-      .filter((element) => element !== null) // Elimină articolele excluse
-      .forEach((element) => {
-        if (element.href && !seenLinks.has(element.href)) {
-          seenLinks.add(element.href);
-          results.push({ ...element, source });
-        }
-      });
+  // Calculăm prefixele acceptate pentru validarea href
+  let allowedPrefixes = null;
+  if (source !== "desprecopii") {
+    if (source === "ziare") {
+      allowedPrefixes = ["https://ziare.com/", "https://www.ziare.com/"];
+    } else {
+      // Extragem domeniul din url; dacă se dorește, se poate defini explicit și în sitesConfig
+      const domain = sitesConfig[source]?.domain || new URL(sitesConfig[source].url).hostname;
+      allowedPrefixes = [`https://${domain}/`, `https://www.${domain}/`];
+    }
   }
+
+  // Procesăm fiecare selector în paralel
+  const scrapedArrays = await Promise.all(
+    tags.map(async ({ tag, contentSelector }) => {
+      return await page.$$eval(
+        tag,
+        (elements, contentSelector, source, allowedPrefixes) => {
+          // Helper: extragerea imaginii
+          const extractImgSrc = (el) => {
+            let src = null;
+            switch (source) {
+              case "adevarul": {
+                const img = el.querySelector("img");
+                src = img ? img.getAttribute("src") : null;
+                break;
+              }
+              case "observatornews": {
+                const img = el.querySelector("figure img");
+                src = img ? img.getAttribute("src") : null;
+                break;
+              }
+              case "clicksanatate":
+              case "okmagazine": {
+                const img = el.querySelector("a.image picture img");
+                src = img ? img.getAttribute("src") : null;
+                break;
+              }
+              default: {
+                const pictureEl = el.querySelector("picture");
+                if (pictureEl) {
+                  const sourceEl = pictureEl.querySelector("source");
+                  if (sourceEl) {
+                    src = sourceEl.getAttribute("srcset");
+                  }
+                  if (!src) {
+                    const img = pictureEl.querySelector("img");
+                    src = img ? img.getAttribute("src") : null;
+                  }
+                }
+                if (!src) {
+                  const img = el.querySelector("img");
+                  src = img ? img.getAttribute("src") : null;
+                }
+              }
+            }
+            // Excludem imaginile inline/Base64
+            return src && src.startsWith("data:image") ? null : src;
+          };
+
+          // Helper: extragerea link-ului și a titlului
+          const extractLinkAndTitle = (el, contentSelector) => {
+            let link = null;
+            let title = null;
+            const contentEl = el.querySelector(contentSelector);
+            if (contentEl) {
+              link = contentEl.querySelector("a");
+              title = contentEl.textContent.trim();
+            }
+
+            // Tratare specifică pentru observatornews.ro
+            if (source === "observatornews") {
+              if (el.matches("div.item.breaking-news-last") || el.matches("div.stire")) {
+                link = el.querySelector("a.full-link");
+              } else if (el.matches("div.stire-simpla")) {
+                const links = el.querySelectorAll("a");
+                link = links[1] || link;
+              }
+            }
+
+            // Pentru clicksanatate.ro și okmagazine.ro, titlul e în atributul "title"
+            if (source === "clicksanatate" || source === "okmagazine") {
+              link = el.querySelector("a.title");
+              title = link ? link.getAttribute("title") : title;
+            }
+            return { link, title };
+          };
+
+          return elements.map((el) => {
+            // Verificăm categoria pentru sursa "fanatik"
+            const categoryEl = el.querySelector(".article__category");
+            const category = categoryEl ? categoryEl.textContent.trim() : null;
+            if (source === "fanatik" && category !== "Sport") return null;
+
+            // Extragem imaginea, link-ul și titlul
+            const imgSrc = extractImgSrc(el);
+            const { link, title } = extractLinkAndTitle(el, contentSelector);
+            const href = link ? link.href : null;
+
+            // Validăm href dacă avem prefixe acceptate
+            if (allowedPrefixes && (!href || !allowedPrefixes.some(prefix => href.startsWith(prefix)))) {
+              return null;
+            }
+
+            return { imgSrc, text: title, href, category };
+          });
+        },
+        contentSelector,
+        source,
+        allowedPrefixes
+      );
+    })
+  );
+
+  // Aplatizăm rezultatele și eliminăm duplicatele
+  const results = scrapedArrays
+    .flat()
+    .filter(item => item && item.href && !seenLinks.has(item.href))
+    .map(item => {
+      seenLinks.add(item.href);
+      return { ...item, source };
+    });
 
   return results;
 };
@@ -295,8 +327,8 @@ export default async function handler(req, res) {
 
   try {
     const browser = await puppeteer.launch({ headless: true });
-
     const connection = await pool.getConnection();
+
     try {
       // Șterge intrările mai vechi de 24 de ore și actualizează raportul
       const [deleteResult] = await connection.query(
@@ -304,7 +336,7 @@ export default async function handler(req, res) {
       );
       report.deleted = deleteResult.affectedRows;
 
-      // Continuă cu scraping-ul
+      // Parcurge fiecare sursă definită în sitesConfig
       for (const source in sitesConfig) {
         const { url, tags, cat } = sitesConfig[source];
 
@@ -315,29 +347,51 @@ export default async function handler(req, res) {
           const scrapedData = await scrapeTags(page, tags, source);
           report.totalScraped += scrapedData.length;
 
-          for (const item of scrapedData) {
-            const [existing] = await connection.query(
-              "SELECT id FROM articles WHERE href = ?",
-              [item.href]
+          if (scrapedData.length > 0) {
+            // Extrage toate link-urile din datele scrape-uite
+            const hrefs = scrapedData.map(item => item.href);
+
+            // Obține toate articolele deja existente pentru link-urile respective
+            const [existingRows] = await connection.query(
+              "SELECT href FROM articles WHERE href IN (?)",
+              [hrefs]
             );
-          
-            if (existing.length === 0) {
+            const existingHrefs = new Set(existingRows.map(row => row.href));
+
+            // Separa articolele noi de cele existente
+            const toInsert = [];
+            scrapedData.forEach(item => {
+              if (existingHrefs.has(item.href)) {
+                report.skipped++;
+                report.details.push({
+                  action: "skipped",
+                  reason: "Already exists",
+                  item
+                });
+              } else {
+                toInsert.push(item);
+              }
+            });
+
+            // Inserare în masă pentru noile articole
+            if (toInsert.length > 0) {
+              const insertValues = toInsert.map(item => [
+                item.source,
+                item.text,
+                item.href,
+                item.imgSrc || null,
+                cat
+              ]);
               await connection.query(
-                "INSERT INTO articles (source, text, href, imgSrc, cat) VALUES (?, ?, ?, ?, ?)",
-                [item.source, item.text, item.href, item.imgSrc || null, cat] // Permite `imgSrc` să fie `null`
+                "INSERT INTO articles (source, text, href, imgSrc, cat) VALUES ?",
+                [insertValues]
               );
-              report.inserted += 1;
-              report.details.push({ action: "inserted", item });
-            } else {
-              report.skipped += 1;
-              report.details.push({
-                action: "skipped",
-                reason: "Already exists",
-                item,
+              report.inserted += toInsert.length;
+              toInsert.forEach(item => {
+                report.details.push({ action: "inserted", item });
               });
             }
           }
-          
 
           await page.close();
         } catch (siteError) {
@@ -345,7 +399,7 @@ export default async function handler(req, res) {
         }
       }
     } finally {
-      connection.release(); // Asigură-te că eliberezi conexiunea
+      connection.release();
     }
 
     await browser.close();
@@ -356,12 +410,12 @@ export default async function handler(req, res) {
     console.log(`- Total articles skipped: ${report.skipped}`);
     console.log(`- Total articles deleted: ${report.deleted}`);
 
-    res.json({
+    return res.json({
       message: "Scraping completed.",
-      report,
+      report
     });
   } catch (error) {
     console.error("Error in scraping:", error.message);
-    res.status(500).json({ error: "Scraping failed" });
+    return res.status(500).json({ error: "Scraping failed" });
   }
 }
