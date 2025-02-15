@@ -48,6 +48,7 @@ const initializeDB = async () => {
           text TEXT,
           href TEXT,
           imgSrc TEXT,
+          label VARCHAR(255),
           cat VARCHAR(50),
           date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )

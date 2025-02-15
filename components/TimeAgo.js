@@ -25,27 +25,30 @@ const TimeAgo = ({ date, source, selectedSource }) => {
 
     const needsDe = (num) => num >= 20;
 
-    if (diffMinutes < 60) 
+    // Dacă este sub 60 de minute, menținem "Acum"
+    if (diffMinutes < 60)
       return `Acum ${diffMinutes} ${needsDe(diffMinutes) ? "de " : ""}minute`;
 
+    // Dacă este cel puțin o oră, nu mai adăugăm "Acum"
     const hours = Math.floor(diffMinutes / 60);
     const minutes = diffMinutes % 60;
 
     const hourText =
-      hours === 1 ? "o oră" : hours === 2 ? "două ore" : `${hours} ore`;
+      hours === 1 ? "O oră" : hours === 2 ? "Două ore" : `${hours} ore`;
 
-    const minuteText = minutes === 0 
-      ? "" 
-      : `${minutes} ${needsDe(minutes) ? "de " : ""}minute`;
+    const minuteText =
+      minutes === 0 ? "" : `${minutes} ${needsDe(minutes) ? "de " : ""}minute`;
 
-    return `Acum ${hourText}${minuteText ? ` și ${minuteText}` : ""}`;
+    return `${hourText}${minuteText ? ` și ${minuteText}` : ""}`;
   };
 
   return (
     <span>
       {timeAgo}
       <span className="bumb">&#8226;</span>
-      {selectedSource === "all" && <strong className="news-source">{source}</strong>}
+      {selectedSource === "all" && (
+        <strong className="news-source">{source}</strong>
+      )}
     </span>
   );
 };

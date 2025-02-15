@@ -3,11 +3,12 @@ import Carousel from "./Carousel";
 import Menu from "./Menu";
 import Top from "./Top";
 import Footer from "./Footer";
-import { FaToggleOn, FaToggleOff, FaCaretRight } from "react-icons/fa";
+import { FaCaretRight } from "react-icons/fa";
 import { Analytics } from "@vercel/analytics/react";
 import SearchResults from "./SearchResults";
 import ScrollToTop from "./ScrollToTop";
 import TimeAgo from "./TimeAgo";
+import Submenu from "./Submenu";
 
 const App = () => {
   const [allData, setAllData] = useState([]);
@@ -19,9 +20,7 @@ const App = () => {
   const [selectedSource, setSelectedSource] = useState("all");
   const [selectedCategory, setSelectedCategory] = useState("Actualitate");
   const [loading, setLoading] = useState(true);
-  const [isAutoplay, setIsAutoplay] = useState(true);
-  
-
+  const [selectedSort, setSelectedSort] = useState("Cele mai noi");
 
   useEffect(() => {
     const fetchAllData = async () => {
@@ -43,20 +42,6 @@ const App = () => {
     };
     fetchAllData();
   }, []);
-
-  useEffect(() => {
-    let intervalId;
-    if (isAutoplay && window.innerWidth >= 600) {
-      intervalId = setInterval(() => {
-        const container = document.querySelector(".news-item-container");
-        if (container) {
-          const currentTop = parseInt(container.style.top || "0", 10);
-          container.style.top = `${currentTop - 1}px`;
-        }
-      }, 50);
-    }
-    return () => clearInterval(intervalId);
-  }, [isAutoplay]);
 
   const handleFilter = (source) => {
     setSelectedSource(source);
@@ -80,18 +65,37 @@ const App = () => {
     setFilteredData(filtered);
   };
 
+  // Functie de sortare comună pentru ambele categorii de știri
+  const sortData = (data) => {
+    const sorted = [...data];
+    switch (selectedSort) {
+      case "Cele mai noi":
+        sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+        break;
+      case "Cele mai vechi":
+        sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
+        break;
+      case "Alfabetic A-Z":
+        sorted.sort((a, b) => a.text.localeCompare(b.text));
+        break;
+      case "Alfabetic Z-A":
+        sorted.sort((a, b) => b.text.localeCompare(a.text));
+        break;
+      default:
+        sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+    return sorted;
+  };
+
   const sortedImageNews = useMemo(() => {
-    return filteredData
-        .filter((item) => item.imgSrc && item.cat === selectedCategory)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-    }, [filteredData, selectedCategory]);
-    
-    const textNews = useMemo(() => {
-      return filteredData
-        .filter((item) => !item.imgSrc && item.cat === selectedCategory)
-        .sort((a, b) => new Date(b.date) - new Date(a.date));
-    }, [filteredData, selectedCategory]);
-  
+    const data = filteredData.filter((item) => item.imgSrc && item.cat === selectedCategory);
+    return sortData(data);
+  }, [filteredData, selectedCategory, selectedSort]);
+
+  const textNews = useMemo(() => {
+    const data = filteredData.filter((item) => !item.imgSrc && item.cat === selectedCategory);
+    return sortData(data);
+  }, [filteredData, selectedCategory, selectedSort]);
 
   return (
     <div>
@@ -115,6 +119,9 @@ const App = () => {
         setSubmittedSearchTerm={setSubmittedSearchTerm}
       />
 
+      {!isSearching && <Submenu selectedSort={selectedSort} onSortChange={setSelectedSort} />}
+
+
       {loading && (
         <div className="loading">
           <div className="spinner"></div>
@@ -132,67 +139,75 @@ const App = () => {
         <SearchResults searchTerm={submittedSearchTerm} allData={allData} />
       ) : (
         <div className="container grid-layout">
-          {sortedImageNews.length > 4 && <Carousel key={selectedSource} items={sortedImageNews.slice(0, 4)} />}
-
-          {textNews.length > 8 && (
-            <>
-              <p className="peScurt">
-                PE SCURT <FaCaretRight style={{ display:"inline-block" }} />
-              </p>
-              <div className="container-news container-news-no-img">
-                <div className="container-news-no-img-top">
-                  <span className="top-top">
-                    <span style={{ color: "#d80000" }}>pe scurt</span>
-                    <span onClick={() => setIsAutoplay(!isAutoplay)} style={{ cursor: "pointer", marginLeft: "10px" }}>
-                      autoplay {isAutoplay ? <FaToggleOn style={{ display:"inline-block", verticalAlign:"text-top" }} /> : <FaToggleOff style={{ color: "grey", display:"inline-block", verticalAlign:"text-top" }} />}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="news-item-container show-items">
-                  {textNews.map((item, index) => (
-                    <div className="news-item" key={index} style={{ borderLeft: ".5px solid #d80000" }}>
-                      <span className="bumb bumbSpecial">&#8226;</span>
-                      <span className="news-item-border">
-                        <p className="ago">
-                          <TimeAgo date={item.date} source={item.source} selectedSource={selectedSource} />
-                        </p>
-                      </span>
-                      {item.href && (
-                        <a href={item.href} target="_blank" rel="noopener noreferrer">
-                          <h3>{item.text}</h3>
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
+          {sortedImageNews.length > 4 && (
+            <Carousel key={selectedSource} items={sortedImageNews.slice(0, 4)} />
           )}
-{loading ? (
-  <span style={{ textAlign:"center", width:"100%", display:"inline-block", color:"var(--red)", paddingBottom:"20px", fontSize:"14px", fontWeight:"bold" }}>
-    SE ÎNCARCĂ ULTIMELE ȘTIRI...
-  </span>
-) : (
-  <p className="ultimele">
-    ULTIMELE ȘTIRI <FaCaretRight style={{ display:"inline-block" }} />
-  </p>
-)}
+
+          {loading ? (
+            <span
+              style={{
+                textAlign: "center",
+                width: "100%",
+                display: "inline-block",
+                color: "var(--red)",
+                paddingBottom: "20px",
+                fontSize: "14px",
+                fontWeight: "bold",
+              }}
+            >
+              SE ÎNCARCĂ ULTIMELE ȘTIRI...
+            </span>
+          ) : (
+            <p className="ultimele">
+              Ultimele știri din {selectedCategory} <FaCaretRight style={{ display: "inline-block" }} />
+            </p>
+          )}
 
           {sortedImageNews.slice(4).map((item, index) => (
             <div className="container-news" key={index}>
-              <img src={item.imgSrc} alt={item.text || "Image"} className="news-image" />
+              <div className="container-news-image">
+                <p className="label">{item.label}</p>
+                <img src={item.imgSrc} alt={item.text || "Image"} className="news-image" />
+              </div>
               {item.href && (
                 <a href={item.href} target="_blank" rel="noopener noreferrer">
+                  <h3>{item.text}</h3>
                   <p className="ago">
-                    <TimeAgo date={item.date} source={item.source} selectedSource={selectedSource} />
+                    <TimeAgo
+                      date={item.date}
+                      source={item.source}
+                      selectedSource={selectedSource}
+                    />
                   </p>
-
                   <div className="supra" style={{ border: ".5px solid black" }}>
-                    <TimeAgo date={item.date} source={item.source} selectedSource={selectedSource} />
+                    <TimeAgo
+                      date={item.date}
+                      source={item.source}
+                      selectedSource={selectedSource}
+                    />
                   </div>
+
+                </a>
+              )}
+            </div>
+          ))}
+
+          {/* Dacă dorești să afișezi și știrile text-only, poți adăuga: */}
+          {textNews.map((item, index) => (
+            <div className="container-news" key={index}>
+              {item.href ? (
+                <a href={item.href} target="_blank" rel="noopener noreferrer">
+                  <p className="ago">
+                    <TimeAgo
+                      date={item.date}
+                      source={item.source}
+                      selectedSource={selectedSource}
+                    />
+                  </p>
                   <h3>{item.text}</h3>
                 </a>
+              ) : (
+                <h3>{item.text}</h3>
               )}
             </div>
           ))}
