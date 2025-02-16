@@ -23,6 +23,13 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSort, setSelectedSort] = useState("Cele mai noi");
 
+  // Stări pentru filtrele suplimentare din Submenu (ca array-uri)
+  const [submenuSourceFilters, setSubmenuSourceFilters] = useState([]);
+  const [submenuLabelFilters, setSubmenuLabelFilters] = useState([]);
+  // Obiect care memorează filtrele pentru fiecare categorie
+  const [filtersByCategory, setFiltersByCategory] = useState({});
+  const [isSubmenuPanelOpen, setIsSubmenuPanelOpen] = useState(false);
+
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
@@ -44,6 +51,18 @@ const App = () => {
     fetchAllData();
   }, []);
 
+  // Actualizează filtrele locale din Submenu când se schimbă categoria,
+  // folosind valorile memorate în filtersByCategory (dacă există)
+  useEffect(() => {
+    if (filtersByCategory[selectedCategory]) {
+      setSubmenuSourceFilters(filtersByCategory[selectedCategory].sourceFilters);
+      setSubmenuLabelFilters(filtersByCategory[selectedCategory].labelFilters);
+    } else {
+      setSubmenuSourceFilters([]);
+      setSubmenuLabelFilters([]);
+    }
+  }, [selectedCategory, filtersByCategory]);
+
   const handleFilter = (source) => {
     setSelectedSource(source);
     filterData(source, selectedCategory);
@@ -52,6 +71,7 @@ const App = () => {
   const handleCategoryFilter = (category) => {
     setIsSearching(false);
     setSubmittedSearchTerm("");
+    // Nu resetăm filtrele globale, ci le reținem în filtersByCategory
     setSelectedCategory(category);
     setSelectedSource("all");
     filterData("all", category);
@@ -61,12 +81,28 @@ const App = () => {
   const filterData = (source, category) => {
     if (!allData.length) return;
     let filtered = [...allData];
-    if (source !== "all") filtered = filtered.filter((item) => item.source === source);
-    if (category) filtered = filtered.filter((item) => item.cat === category);
+    if (source !== "all") {
+      filtered = filtered.filter((item) => item.source === source);
+    }
+    if (category) {
+      filtered = filtered.filter((item) => item.cat === category);
+    }
     setFilteredData(filtered);
   };
 
-  // Functie de sortare comună pentru ambele categorii de știri
+  // Aplicăm filtrele suplimentare din Submenu la datele filtrate deja
+  const finalFilteredData = useMemo(() => {
+    let data = [...filteredData];
+    if (submenuSourceFilters.length > 0) {
+      data = data.filter((item) => submenuSourceFilters.includes(item.source));
+    }
+    if (submenuLabelFilters.length > 0) {
+      data = data.filter((item) => submenuLabelFilters.includes(item.label));
+    }
+    return data;
+  }, [filteredData, submenuSourceFilters, submenuLabelFilters]);
+
+  // Funcție de sortare comună pentru articole
   const sortData = (data) => {
     const sorted = [...data];
     switch (selectedSort) {
@@ -89,14 +125,59 @@ const App = () => {
   };
 
   const sortedImageNews = useMemo(() => {
-    const data = filteredData.filter((item) => item.imgSrc && item.cat === selectedCategory);
+    const data = finalFilteredData.filter(
+      (item) => item.imgSrc && item.cat === selectedCategory
+    );
     return sortData(data);
-  }, [filteredData, selectedCategory, selectedSort]);
+  }, [finalFilteredData, selectedCategory, selectedSort]);
 
   const textNews = useMemo(() => {
-    const data = filteredData.filter((item) => !item.imgSrc && item.cat === selectedCategory);
+    const data = finalFilteredData.filter(
+      (item) => !item.imgSrc && item.cat === selectedCategory
+    );
     return sortData(data);
-  }, [filteredData, selectedCategory, selectedSort]);
+  }, [finalFilteredData, selectedCategory, selectedSort]);
+
+  // Sursele și etichetele disponibile pentru categoria selectată
+  const availableSourcesForCategory = Array.from(
+    new Set(allData.filter(item => item.cat === selectedCategory).map(item => item.source))
+  );
+  const availableLabelsForCategory = Array.from(
+    new Set(allData.filter(item => item.cat === selectedCategory).map(item => item.label))
+  );
+
+  // Funcții pentru actualizarea filtrelor pentru categoria curentă
+  const updateSourceFilters = (newSourceFilters) => {
+    setSubmenuSourceFilters(newSourceFilters);
+    setFiltersByCategory((prev) => ({
+      ...prev,
+      [selectedCategory]: {
+        sourceFilters: newSourceFilters,
+        labelFilters: submenuLabelFilters,
+      },
+    }));
+  };
+
+  const updateLabelFilters = (newLabelFilters) => {
+    setSubmenuLabelFilters(newLabelFilters);
+    setFiltersByCategory((prev) => ({
+      ...prev,
+      [selectedCategory]: {
+        sourceFilters: submenuSourceFilters,
+        labelFilters: newLabelFilters,
+      },
+    }));
+  };
+
+  // Funcția de resetare completă a filtrelor pentru categoria curentă
+  const resetFilters = () => {
+    setSubmenuSourceFilters([]);
+    setSubmenuLabelFilters([]);
+    setFiltersByCategory((prev) => ({
+      ...prev,
+      [selectedCategory]: { sourceFilters: [], labelFilters: [] },
+    }));
+  };
 
   return (
     <div>
@@ -120,77 +201,102 @@ const App = () => {
         setSubmittedSearchTerm={setSubmittedSearchTerm}
       />
 
-      {!isSearching && <Submenu selectedSort={selectedSort} onSortChange={setSelectedSort} />}
-
-      {loading && (
-        <div className="loading">
-          <div className="spinner"></div>
-        </div>
+      {!isSearching && (
+        <Submenu
+          selectedSort={selectedSort}
+          onSortChange={setSelectedSort}
+          availableSources={availableSourcesForCategory}
+          availableLabels={availableLabelsForCategory}
+          isPanelOpen={isSubmenuPanelOpen}
+          openPanel={() => setIsSubmenuPanelOpen(true)}
+          closePanel={() => setIsSubmenuPanelOpen(false)}
+          submenuSourceFilters={submenuSourceFilters}
+          onSourceFilterChange={updateSourceFilters}
+          submenuLabelFilters={submenuLabelFilters}
+          onLabelFilterChange={updateLabelFilters}
+          onResetFilters={resetFilters}
+        />
       )}
 
-      {!loading && error && (
-        <div style={{ color: "red", textAlign: "center", padding: "20px" }}>
-          <h3>Error:</h3>
-          <p>{error}</p>
+      {loading ? (
+        <div>
+          <div className="loading">
+            <div className="spinner"></div>
+          </div>
+          <p style={{ textAlign:"center", color:"var(--red)", padding:"20px", fontWeight:"bold"}}>
+            Se încarcă ultimele știri
+          </p>
         </div>
-      )}
-
-      {!loading && isSearching ? (
-        <SearchResults searchTerm={submittedSearchTerm} allData={allData} />
       ) : (
         <div className="container grid-layout">
-          {sortedImageNews.length > 4 && (
-            <Carousel key={selectedSource} items={sortedImageNews.slice(0, 4)} />
-          )}
-
-          {loading ? (
-            <span
-              style={{
-                textAlign: "center",
-                width: "100%",
-                display: "inline-block",
-                color: "var(--red)",
-                paddingBottom: "20px",
-                fontSize: "14px",
-                fontWeight: "bold",
-              }}
-            >
-              SE ÎNCARCĂ ULTIMELE ȘTIRI...
-            </span>
-          ) : (
-            <p className="ultimele">
-              Ultimele știri din {selectedCategory} <FaCaretRight style={{ display: "inline-block" }} />
+          {sortedImageNews.length === 0 ? (
+            <p style={{ textAlign: "center", fontWeight: "bold", padding: "20px" }}>
+              Nu s-a găsit nicio știre pentru acest filtru
             </p>
-          )}
-
-          {sortedImageNews.slice(4).map((item, index) => (
-            <div className="container-news" key={index}>
-              <div className="container-news-image">
-                <p className="label">{item.label}</p>
-                <img src={item.imgSrc} alt={item.text || "Image"} className="news-image" />
-              </div>
-              {item.href && (
-                <a href={item.href} target="_blank" rel="noopener noreferrer">
-                  <h3><span className="labelMobil">{item.label}.</span> {item.text}</h3>
-                  <p className="ago">
-                    <TimeAgo
-                      date={item.date}
-                      source={item.source}
-                      selectedSource={selectedSource}
-                    />
-                  </p>
-                  <div className="supra" style={{ border: ".5px solid black" }}>
-                    <TimeAgo
-                      date={item.date}
-                      source={item.source}
-                      selectedSource={selectedSource}
-                    />
+          ) : sortedImageNews.length >= 5 ? (
+            <>
+              <Carousel key={selectedSource} items={sortedImageNews.slice(0, 4)} />
+              {sortedImageNews.slice(4).map((item, index) => (
+                <div className="container-news" key={index}>
+                  <div className="container-news-image">
+                    <p className="label">{item.label}</p>
+                    <img src={item.imgSrc} alt={item.text || "Image"} className="news-image" />
                   </div>
-
-                </a>
-              )}
-            </div>
-          ))}
+                  {item.href && (
+                    <a href={item.href} target="_blank" rel="noopener noreferrer">
+                      <h3>
+                        <span className="labelMobil">{item.label}.</span> {item.text}
+                      </h3>
+                      <p className="ago">
+                        <TimeAgo
+                          date={item.date}
+                          source={item.source}
+                          selectedSource={selectedSource}
+                        />
+                      </p>
+                      <div className="supra" style={{ border: ".5px solid black" }}>
+                        <TimeAgo
+                          date={item.date}
+                          source={item.source}
+                          selectedSource={selectedSource}
+                        />
+                      </div>
+                    </a>
+                  )}
+                </div>
+              ))}
+            </>
+          ) : (
+            sortedImageNews.map((item, index) => (
+              <div className="container-news" key={index}>
+                <div className="container-news-image">
+                  <p className="label">{item.label}</p>
+                  <img src={item.imgSrc} alt={item.text || "Image"} className="news-image" />
+                </div>
+                {item.href && (
+                  <a href={item.href} target="_blank" rel="noopener noreferrer">
+                    <h3>
+                      <span className="labelMobil">{item.label}.</span> {item.text}
+                    </h3>
+                    <p className="ago">
+                      <TimeAgo
+                        date={item.date}
+                        source={item.source}
+                        selectedSource={selectedSource}
+                      />
+                    </p>
+                    <div className="supra" style={{ border: ".5px solid black" }}>
+                      <TimeAgo
+                        date={item.date}
+                        source={item.source}
+                        selectedSource={selectedSource}
+                      />
+                    </div>
+                  </a>
+                )}
+              </div>
+            ))
+          )}
         </div>
       )}
 
