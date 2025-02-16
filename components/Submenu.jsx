@@ -38,7 +38,7 @@ const Submenu = ({
   onSourceFilterChange,
   submenuLabelFilters,
   onLabelFilterChange,
-  onResetFilters  // Noua prop
+  onResetFilters
 }) => {
   // Sortează sursele și etichetele fără a modifica array-ul original
   const sortedSources = availableSources.slice().sort((a, b) =>
@@ -64,16 +64,19 @@ const Submenu = ({
     }
   };
 
+  // Variabilă pentru a verifica dacă există filtre active
+  const hasActiveFilters = submenuSourceFilters.length > 0 || submenuLabelFilters.length > 0;
+  
   // Butonul "Dezactivează tot" este afișat dacă cel puțin un checkbox este activ
-  const showResetButton = submenuSourceFilters.length > 0 || submenuLabelFilters.length > 0;
+  const showResetButton = hasActiveFilters;
 
   return (
     <div>
-      <div 
-        className="displayFilter" 
-        style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}
+      <div
+        className="displayFilter"
+        style={{ display: hasActiveFilters ? "flex" : "none" }}
       >
-        {(submenuSourceFilters.length > 0 || submenuLabelFilters.length > 0) && (
+        {hasActiveFilters && (
           <div style={{ padding: "4px 0" }}>Arată doar:</div>
         )}
         {submenuSourceFilters.map((source, index) => (
@@ -114,12 +117,12 @@ const Submenu = ({
             />
           </div>
         ))}
-        {(submenuSourceFilters.length > 0 || submenuLabelFilters.length > 0) && (
+        {hasActiveFilters && (
           <hr style={{ height:"2px", minWidth:"100%", background:"black" }} />
         )}
       </div>
 
-      <div className="containerSubMenu" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px' }}>
+      <div className="containerSubMenu">
         <div
           className="filter"
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
@@ -159,7 +162,7 @@ const Submenu = ({
                   <button
                     onClick={() => {
                       onResetFilters();
-                      closePanel();
+                      // closePanel();
                     }}
                     style={{
                       padding: '4px 8px',
