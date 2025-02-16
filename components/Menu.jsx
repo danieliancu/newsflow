@@ -14,6 +14,8 @@ const Menu = ({
   setSubmittedSearchTerm
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  // Setăm un fallback, deoarece window nu este definit în SSR
+  const [isMobile, setIsMobile] = useState(false);
 
   // Sortează dinamic categoriile
   const categories = (availableCategories || []).slice().sort((a, b) =>
@@ -26,7 +28,9 @@ const Menu = ({
   );
 
   useEffect(() => {
+    // Asigură-te că rulezi acest cod doar pe client
     const handleResize = () => {
+      setIsMobile(window.innerWidth < 767);
       if (window.innerWidth > 766) {
         setMenuOpen(true);
       } else {
@@ -34,6 +38,7 @@ const Menu = ({
       }
     };
 
+    // Initializează starea la montare
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -50,9 +55,9 @@ const Menu = ({
 
   // Funcție care anulează căutarea și golește inputul
   const resetSearch = () => {
-    setSearchTerm("");           
-    setIsSearching(false);       
-    setSubmittedSearchTerm("");  
+    setSearchTerm("");
+    setIsSearching(false);
+    setSubmittedSearchTerm("");
   };
 
   return (
@@ -104,46 +109,26 @@ const Menu = ({
               onClick={() => {
                 resetSearch();
                 handleCategoryFilter(category);
-
                 if (window.innerWidth < 600) {
                   setMenuOpen(false);
                 }
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
-              style={{
-                borderBottom:
-                  selectedCategory === category ? "4px solid #d80000" : "none",
-              }}
+              style={
+                isMobile
+                  ? {
+                      color:
+                        selectedCategory === category ? "var(--red)" : "white",
+                    }
+                  : {
+                      borderBottom:
+                        selectedCategory === category ? "4px solid #d80000" : "none",
+                    }
+              }
               className={`menu-item ${selectedCategory === category ? "active" : ""}`}
             >
               {category}
             </div>
-          ))}
-        </div>
-
-        {/* LISTA SURSE (dacă vrei să o afișezi) */}
-        <div style={{ display: "none" }}>
-          <button
-            style={{ color: "red", padding: "0 10px" }}
-            onClick={() => {
-              resetSearch();
-              handleFilter("all");
-            }}
-            className={selectedSource === "all" ? "active" : ""}
-          >
-            Toate sursele
-          </button>
-          {sources.map((source) => (
-            <button
-              key={source}
-              onClick={() => {
-                resetSearch();
-                handleFilter(source);
-              }}
-              className={selectedSource === source ? "active" : ""}
-            >
-              {source}
-            </button>
           ))}
         </div>
       </div>

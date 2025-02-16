@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { FaCaretRight } from "react-icons/fa";
+import { Analytics } from "@vercel/analytics/react";
+
 import Carousel from "./Carousel";
 import Menu from "./Menu";
 import Top from "./Top";
 import Footer from "./Footer";
-import { FaCaretRight } from "react-icons/fa";
-import { Analytics } from "@vercel/analytics/react";
 import SearchResults from "./SearchResults";
 import ScrollToTop from "./ScrollToTop";
 import TimeAgo from "./TimeAgo";
@@ -121,7 +122,6 @@ const App = () => {
 
       {!isSearching && <Submenu selectedSort={selectedSort} onSortChange={setSelectedSort} />}
 
-
       {loading && (
         <div className="loading">
           <div className="spinner"></div>
@@ -171,7 +171,7 @@ const App = () => {
               </div>
               {item.href && (
                 <a href={item.href} target="_blank" rel="noopener noreferrer">
-                  <h3>{item.text}</h3>
+                  <h3><span className="labelMobil">{item.label}.</span> {item.text}</h3>
                   <p className="ago">
                     <TimeAgo
                       date={item.date}
@@ -188,26 +188,6 @@ const App = () => {
                   </div>
 
                 </a>
-              )}
-            </div>
-          ))}
-
-          {/* Dacă dorești să afișezi și știrile text-only, poți adăuga: */}
-          {textNews.map((item, index) => (
-            <div className="container-news" key={index}>
-              {item.href ? (
-                <a href={item.href} target="_blank" rel="noopener noreferrer">
-                  <p className="ago">
-                    <TimeAgo
-                      date={item.date}
-                      source={item.source}
-                      selectedSource={selectedSource}
-                    />
-                  </p>
-                  <h3>{item.text}</h3>
-                </a>
-              ) : (
-                <h3>{item.text}</h3>
               )}
             </div>
           ))}

@@ -6,7 +6,7 @@ const SubMenu = ({ selectedSort, onSortChange }) => {
     <div className="containerSubMenu">
       <div className="filter">
         <FaFilter style={{ fontSize:"16px", display: "inline", verticalAlign: "sub", paddingRight: "2px" }} />
-        Filter
+        Filtrează știrile
       </div>
       <div className="sort">
         <select value={selectedSort} onChange={(e) => onSortChange(e.target.value)}>
