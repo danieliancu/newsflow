@@ -154,7 +154,7 @@ const Submenu = ({
           >
             <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ display: "flex", alignItems:"center", gap:"10px" }}>
-                <h3>Filtre</h3>
+                <h3 style={{ padding:"5px 0" }}>Filtre</h3>
                 {showResetButton && (
                   <button
                     onClick={() => {
@@ -185,7 +185,7 @@ const Submenu = ({
                       <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
                         <input 
                           type="checkbox" 
-                          className="mr-2"
+                          className="custom-checkbox"
                           checked={submenuSourceFilters.includes(source)}
                           onChange={() => handleSourceChange(source)}
                         />
@@ -203,7 +203,7 @@ const Submenu = ({
                       <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
                         <input 
                           type="checkbox" 
-                          className="mr-2"
+                          className="custom-checkbox"
                           checked={submenuLabelFilters.includes(label)}
                           onChange={() => handleLabelChange(label)}
                         />

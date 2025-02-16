@@ -69,9 +69,8 @@ const App = () => {
   };
 
   const handleCategoryFilter = (category) => {
-    setIsSearching(false);
+    // Nu resetăm căutarea la schimbarea categoriei, pentru a păstra rezultatele vechi
     setSubmittedSearchTerm("");
-    // Nu resetăm filtrele globale, ci le reținem în filtersByCategory
     setSelectedCategory(category);
     setSelectedSource("all");
     filterData("all", category);
@@ -227,6 +226,8 @@ const App = () => {
             Se încarcă ultimele știri
           </p>
         </div>
+      ) : submittedSearchTerm.trim() ? (
+        <SearchResults searchTerm={submittedSearchTerm} allData={allData} />
       ) : (
         <div className="container grid-layout">
           {sortedImageNews.length === 0 ? (

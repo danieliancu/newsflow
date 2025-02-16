@@ -1,8 +1,7 @@
 import React from "react";
-import ScrollToTop from "./ScrollToTop"; // ✅ Import nou
-import { FaCaretRight } from "react-icons/fa"; // ✅ Iconiță pentru titluri de categorie
+import ScrollToTop from "./ScrollToTop";
+import { FaCaretRight } from "react-icons/fa";
 
-// Funcția de eliminare a diacriticelor românești
 function removeRomanianDiacritics(str) {
   return str
     .replace(/[ăĂ]/g, "a")
@@ -12,33 +11,22 @@ function removeRomanianDiacritics(str) {
     .replace(/[țȚ]/g, "t");
 }
 
-// Funcția de căutare inteligentă
 const SearchResults = ({ searchTerm, allData }) => {
   console.log("SearchResults", searchTerm, allData);
 
-  if (!searchTerm.trim()) return null; // Dacă inputul e gol, nu afișăm nimic
+  if (!searchTerm.trim()) return null;
 
-  // 1) Normalizăm "searchTerm" (fără diacritice + lowercase)
   const normalizedSearchTerm = removeRomanianDiacritics(searchTerm.toLowerCase());
+  const searchWords = normalizedSearchTerm.split(/\s+/);
 
-  // 2) Separăm termenul de căutare în cuvinte (ex: "trumps news" -> ["trumps", "news"])
-  const searchWords = normalizedSearchTerm.split(/\s+/); // Split pe spații multiple
-
-  // 3) Aplicăm filtrarea avansată
   const filteredSearch = allData.filter((item) => {
-    // Normalizăm textul articolului
     const normalizedText = removeRomanianDiacritics(item.text.toLowerCase());
-
-    // Separăm articolul în cuvinte (ex: "Donald Trump wins" -> ["donald", "trump", "wins"])
     const articleWords = normalizedText.split(/\s+/);
-
-    // 4) Verificăm dacă ORICE cuvânt din searchTerm există în ORICE cuvânt din articol
     return searchWords.some((searchWord) =>
-      articleWords.some((articleWord) => articleWord.startsWith(searchWord))
+      articleWords.some((articleWord) => articleWord.includes(searchWord))
     );
   });
 
-  // Dacă nu există rezultate
   if (filteredSearch.length === 0) {
     return (
       <h2 className="no-results">
@@ -47,7 +35,6 @@ const SearchResults = ({ searchTerm, allData }) => {
     );
   }
 
-  // 📌 Grupăm rezultatele după categorie (cat)
   const groupedResults = filteredSearch.reduce((acc, item) => {
     if (!acc[item.cat]) {
       acc[item.cat] = [];
@@ -56,7 +43,6 @@ const SearchResults = ({ searchTerm, allData }) => {
     return acc;
   }, {});
 
-  // Afișăm rezultatele grupate pe categorii
   return (
     <div className="search-results">
       <h1>
@@ -78,11 +64,9 @@ const SearchResults = ({ searchTerm, allData }) => {
                 )}
                 {item.href && (
                   <a href={item.href} target="_blank" rel="noopener noreferrer">
-
                     <p className="ago">
                       <strong className="news-source">{item.source}</strong>
                     </p>
-
                     <h3>{item.text}</h3>
                   </a>
                 )}

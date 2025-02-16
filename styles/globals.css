@@ -157,6 +157,36 @@ input, select {
   outline: none;
 }
 
+.custom-checkbox {
+  appearance: none; /* Anulează stilurile native */
+  -webkit-appearance: none;
+  background-color: white !important; /* Background alb */
+  border: 1px solid #ccc !important;  /* Bordură opțională */
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  border-radius: 4px; /* Opțional, pentru colțuri rotunjite */
+  position: relative;
+}
+
+/* Stil pentru starea "checked" */
+.custom-checkbox:checked {
+  background-color: white !important; /* păstrează background-ul alb */
+}
+
+/* Pentru a afișa o bifă personalizată când este bifat */
+.custom-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 6px;
+  width: 6px;
+  height: 12px;
+  border: solid black;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
 
 /*  spinner  */
 

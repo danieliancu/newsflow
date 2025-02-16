@@ -1,4 +1,3 @@
-// Top.jsx
 import React from 'react';
 import { FaUser } from 'react-icons/fa';
 
@@ -9,26 +8,22 @@ const Top = ({
   setSubmittedSearchTerm 
 }) => {
 
-  // Doar actualizează textul din input
   const handleChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  // Când se apasă pe lupa
   const handleSearch = () => {
     if (searchTerm.trim().length > 0) {
-      // confirmăm căutarea:
       setSubmittedSearchTerm(searchTerm);
       setIsSearching(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
+      console.log("Submitted searchTerm:", searchTerm);
     } else {
-      // input gol -> ieșim din modul căutare
       setSubmittedSearchTerm("");
       setIsSearching(false);
     }
   };
 
-  // Butonul (X) care golește tot
   const handleClear = () => {
     setSearchTerm("");
     setSubmittedSearchTerm("");
@@ -57,7 +52,6 @@ const Top = ({
             onChange={handleChange}
           />
 
-          {/* X care apare dacă avem text în input */}
           {searchTerm.length > 0 && (
             <svg
               onClick={handleClear}
@@ -81,12 +75,11 @@ const Top = ({
               <path d="M242.72 256l100.07-100.07a23.999 23.999 0 10-33.94-33.94L208.78 
               222.06 108.72 122a23.999 23.999 0 10-33.94 33.94L174.84 256 
               74.78 356.07a23.999 23.999 0 1033.94 33.94l100.06-100.07 
-              100.07 100.07a23.999 23.999 0 0033.94 0 23.999 23.999 0 
-              000-33.94L242.72 256z"/>
+              100.07 100.07a23.999 23.999 0 0033.94 0l28.3-28.3c9.4-9.4 
+              9.4-24.6.1-34z"/>
             </svg>
           )}
 
-          {/* Lupa (când se dă click, face handleSearch) */}
           <svg
             onClick={handleSearch}
             style={{
