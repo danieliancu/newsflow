@@ -1400,3 +1400,42 @@ button {
 .labels {
   border-left:.1px solid var(--black);
 }
+
+
+
+/* ===== Animație la apariția cardurilor ===== */
+@keyframes fadeIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* ===== Stil pentru fiecare card de știre ===== */
+.container-news {
+  animation: fadeIn 0.5s ease-in-out; 
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background-color: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0px 1px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+
+/* ===== Imaginea știrii ===== */
+.container-news-image img {
+  transition: transform 0.4s ease;
+  width: 90%;
+  height: 180px;
+  object-fit: cover;
+}
+
+
+
+
+

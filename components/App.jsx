@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { FaCaretRight } from "react-icons/fa";
+import React, { useState, useEffect, useMemo, useReducer, useRef, useCallback } from "react";
 import { Analytics } from "@vercel/analytics/react";
 
 import Carousel from "./Carousel";
@@ -8,12 +7,58 @@ import Top from "./Top";
 import Footer from "./Footer";
 import SearchResults from "./SearchResults";
 import ScrollToTop from "./ScrollToTop";
-import TimeAgo from "./TimeAgo";
 import Submenu from "./Submenu";
+import { useFilteredArticles } from "./hooks/useFilteredArticles";
+import NewsCard from "./NewsCard";
+
+// 🟡 1. Reducer pentru paginare pe categorii
+const initialPaginationState = {};
+function paginationReducer(state, action) {
+  switch (action.type) {
+    case "SET_PAGE":
+      return {
+        ...state,
+        [action.category]: action.page,
+      };
+    case "RESET":
+      return initialPaginationState;
+    default:
+      return state;
+  }
+}
+
+// 🟠 2. Reducer pentru memorarea poziției de scroll
+const initialScrollState = {};
+function scrollReducer(state, action) {
+  switch (action.type) {
+    case "SET_SCROLL":
+      return {
+        ...state,
+        [action.category]: action.scrollPosition,
+      };
+    case "RESET":
+      return initialScrollState;
+    default:
+      return state;
+  }
+}
 
 const App = () => {
+  // 🟢 Reduceri pentru paginare și scroll
+  const [paginationState, dispatchPagination] = useReducer(
+    paginationReducer,
+    initialPaginationState
+  );
+  const [scrollState, dispatchScroll] = useReducer(
+    scrollReducer,
+    initialScrollState
+  );
+
+  // 🟡 Referință pentru scroll
+  const scrollRef = useRef();
+
+  // Stări principale
   const [allData, setAllData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
@@ -23,13 +68,19 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSort, setSelectedSort] = useState("Cele mai noi");
 
-  // Stări pentru filtrele suplimentare din Submenu (ca array-uri)
+  // Stări pentru filtre suplimentare (Submenu)
   const [submenuSourceFilters, setSubmenuSourceFilters] = useState([]);
   const [submenuLabelFilters, setSubmenuLabelFilters] = useState([]);
-  // Obiect care memorează filtrele pentru fiecare categorie
   const [filtersByCategory, setFiltersByCategory] = useState({});
   const [isSubmenuPanelOpen, setIsSubmenuPanelOpen] = useState(false);
 
+  // 🟡 Stare pentru pagină curentă (se actualizează cu reducer)
+  const itemsPerPage = 8;
+  const [currentPage, setCurrentPage] = useState(
+    paginationState[selectedCategory] || 1
+  );
+
+  // 📥 Fetch date la încărcare
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
@@ -38,7 +89,6 @@ const App = () => {
         const result = await response.json();
         if (response.ok) {
           setAllData(result.data);
-          setFilteredData(result.data);
         } else {
           setError(result.error || "Failed to fetch data");
         }
@@ -51,8 +101,7 @@ const App = () => {
     fetchAllData();
   }, []);
 
-  // Actualizează filtrele locale din Submenu când se schimbă categoria,
-  // folosind valorile memorate în filtersByCategory (dacă există)
+  // 🔄 Actualizează filtrele locale când se schimbă categoria
   useEffect(() => {
     if (filtersByCategory[selectedCategory]) {
       setSubmenuSourceFilters(filtersByCategory[selectedCategory].sourceFilters);
@@ -63,90 +112,121 @@ const App = () => {
     }
   }, [selectedCategory, filtersByCategory]);
 
-  const handleFilter = (source) => {
-    setSelectedSource(source);
-    filterData(source, selectedCategory);
-  };
+  // 🟠 3. Salvăm poziția de scroll înainte de schimbarea categoriei
+  useEffect(() => {
+    const saveScrollPosition = () => {
+      if (selectedCategory) {
+        dispatchScroll({
+          type: "SET_SCROLL",
+          category: selectedCategory,
+          scrollPosition: window.scrollY,
+        });
+      }
+    };
 
-  const handleCategoryFilter = (category) => {
-    // Nu resetăm căutarea la schimbarea categoriei, pentru a păstra rezultatele vechi
+    window.addEventListener("beforeunload", saveScrollPosition);
+    return () => {
+      window.removeEventListener("beforeunload", saveScrollPosition);
+    };
+  }, [selectedCategory]);
+
+  // 🟡 4. Aplicăm poziția de scroll memorată la revenirea pe categorie
+  useEffect(() => {
+    if (scrollState[selectedCategory] !== undefined) {
+      window.scrollTo({
+        top: scrollState[selectedCategory],
+        behavior: "smooth",
+      });
+    }
+  }, [selectedCategory, scrollState]);
+
+  // ✅ Folosim noul hook pentru filtrare și sortare
+  const { sortedImageNews, textNews } = useFilteredArticles(
+    allData,
+    selectedCategory,
+    selectedSource,
+    submenuSourceFilters,
+    submenuLabelFilters,
+    selectedSort
+  );
+
+  // 🟡 Calculăm știrile totale (imagini + text)
+  const totalFilteredNews = useMemo(
+    () => sortedImageNews.concat(textNews),
+    [sortedImageNews, textNews]
+  );
+
+  // ✅ Aplicăm regula pentru carousel (minim 5 știri)
+  const carouselNews = useMemo(
+    () => (totalFilteredNews.length >= 5 ? totalFilteredNews.slice(0, 4) : []),
+    [totalFilteredNews]
+  );
+
+  // ✅ Știrile rămase după carousel
+  const remainingNews = useMemo(
+    () => totalFilteredNews.slice(carouselNews.length),
+    [totalFilteredNews, carouselNews]
+  );
+
+  // 🟠 Gestionare paginare cu poziția salvată
+  const visibleNews = useMemo(() => {
+    return remainingNews.slice(
+      0,
+      (paginationState[selectedCategory] || 1) * itemsPerPage
+    );
+  }, [remainingNews, paginationState, selectedCategory]);
+
+  // 🔥 🟡 Optimizare cu useCallback pentru funcțiile transmise în componente:
+  
+  // ✅ 1. handleFilter
+  const handleFilter = useCallback((source) => {
+    setSelectedSource(source);
+    setCurrentPage(1);
+    dispatchPagination({
+      type: "SET_PAGE",
+      category: selectedCategory,
+      page: 1,
+    });
+  }, [selectedCategory]);
+
+  // ✅ 2. handleCategoryFilter
+  const handleCategoryFilter = useCallback((category) => {
+    if (!category) return;
+
+    dispatchScroll({
+      type: "SET_SCROLL",
+      category: selectedCategory,
+      scrollPosition: window.scrollY,
+    });
+
     setSubmittedSearchTerm("");
     setSelectedCategory(category);
+    setCurrentPage(paginationState[category] || 1);
     setSelectedSource("all");
-    filterData("all", category);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
-  const filterData = (source, category) => {
-    if (!allData.length) return;
-    let filtered = [...allData];
-    if (source !== "all") {
-      filtered = filtered.filter((item) => item.source === source);
+    if (scrollState[category] !== undefined) {
+      window.scrollTo({
+        top: scrollState[category],
+        behavior: "smooth",
+      });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
-    if (category) {
-      filtered = filtered.filter((item) => item.cat === category);
-    }
-    setFilteredData(filtered);
-  };
+  }, [paginationState, scrollState, selectedCategory]);
 
-  // Aplicăm filtrele suplimentare din Submenu la datele filtrate deja
-  const finalFilteredData = useMemo(() => {
-    let data = [...filteredData];
-    if (submenuSourceFilters.length > 0) {
-      data = data.filter((item) => submenuSourceFilters.includes(item.source));
-    }
-    if (submenuLabelFilters.length > 0) {
-      data = data.filter((item) => submenuLabelFilters.includes(item.label));
-    }
-    return data;
-  }, [filteredData, submenuSourceFilters, submenuLabelFilters]);
+  // ✅ 3. handleLoadMore
+  const handleLoadMore = useCallback(() => {
+    const nextPage = (paginationState[selectedCategory] || 1) + 1;
+    setCurrentPage(nextPage);
+    dispatchPagination({
+      type: "SET_PAGE",
+      category: selectedCategory,
+      page: nextPage,
+    });
+  }, [paginationState, selectedCategory]);
 
-  // Funcție de sortare comună pentru articole
-  const sortData = (data) => {
-    const sorted = [...data];
-    switch (selectedSort) {
-      case "Cele mai noi":
-        sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
-        break;
-      case "Cele mai vechi":
-        sorted.sort((a, b) => new Date(a.date) - new Date(b.date));
-        break;
-      case "Alfabetic A-Z":
-        sorted.sort((a, b) => a.text.localeCompare(b.text));
-        break;
-      case "Alfabetic Z-A":
-        sorted.sort((a, b) => b.text.localeCompare(a.text));
-        break;
-      default:
-        sorted.sort((a, b) => new Date(b.date) - new Date(a.date));
-    }
-    return sorted;
-  };
-
-  const sortedImageNews = useMemo(() => {
-    const data = finalFilteredData.filter(
-      (item) => item.imgSrc && item.cat === selectedCategory
-    );
-    return sortData(data);
-  }, [finalFilteredData, selectedCategory, selectedSort]);
-
-  const textNews = useMemo(() => {
-    const data = finalFilteredData.filter(
-      (item) => !item.imgSrc && item.cat === selectedCategory
-    );
-    return sortData(data);
-  }, [finalFilteredData, selectedCategory, selectedSort]);
-
-  // Sursele și etichetele disponibile pentru categoria selectată
-  const availableSourcesForCategory = Array.from(
-    new Set(allData.filter(item => item.cat === selectedCategory).map(item => item.source))
-  );
-  const availableLabelsForCategory = Array.from(
-    new Set(allData.filter(item => item.cat === selectedCategory).map(item => item.label))
-  );
-
-  // Funcții pentru actualizarea filtrelor pentru categoria curentă
-  const updateSourceFilters = (newSourceFilters) => {
+  // ✅ 4. updateSourceFilters
+  const updateSourceFilters = useCallback((newSourceFilters) => {
     setSubmenuSourceFilters(newSourceFilters);
     setFiltersByCategory((prev) => ({
       ...prev,
@@ -155,9 +235,10 @@ const App = () => {
         labelFilters: submenuLabelFilters,
       },
     }));
-  };
+  }, [submenuLabelFilters, selectedCategory]);
 
-  const updateLabelFilters = (newLabelFilters) => {
+  // ✅ 5. updateLabelFilters
+  const updateLabelFilters = useCallback((newLabelFilters) => {
     setSubmenuLabelFilters(newLabelFilters);
     setFiltersByCategory((prev) => ({
       ...prev,
@@ -166,20 +247,46 @@ const App = () => {
         labelFilters: newLabelFilters,
       },
     }));
-  };
+  }, [submenuSourceFilters, selectedCategory]);
 
-  // Funcția de resetare completă a filtrelor pentru categoria curentă
-  const resetFilters = () => {
+  // ✅ 6. resetFilters
+  const resetFilters = useCallback(() => {
     setSubmenuSourceFilters([]);
     setSubmenuLabelFilters([]);
     setFiltersByCategory((prev) => ({
       ...prev,
       [selectedCategory]: { sourceFilters: [], labelFilters: [] },
     }));
-  };
+  }, [selectedCategory]);
 
+  // 🟢 Sursele și etichetele disponibile pentru categoria selectată - optimizate cu useMemo
+  const availableSourcesForCategory = useMemo(() => 
+    Array.from(
+      new Set(
+        allData.filter((item) => item.cat === selectedCategory)
+               .map((item) => item.source)
+      )
+    ),
+    [allData, selectedCategory]
+  );
+
+  const availableLabelsForCategory = useMemo(() => 
+    Array.from(
+      new Set(
+        allData.filter((item) => item.cat === selectedCategory)
+               .map((item) => item.label)
+      )
+    ),
+    [allData, selectedCategory]
+  );
+
+  // 🟡 Calculăm totalul știrilor pentru butonul "Încarcă mai multe"
+  const totalNewsCount = useMemo(() => remainingNews.length, [remainingNews]);
+
+  // 🖼️ Randare UI
   return (
-    <div>
+    <div ref={scrollRef}>
+      {/* 🔝 Bara de căutare */}
       <Top
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
@@ -188,18 +295,20 @@ const App = () => {
         setSubmittedSearchTerm={setSubmittedSearchTerm}
       />
 
+      {/* 🗂️ Meniu Categorii și Surse */}
       <Menu
         selectedSource={selectedSource}
         selectedCategory={selectedCategory}
         handleFilter={handleFilter}
         handleCategoryFilter={handleCategoryFilter}
-        availableSources={Array.from(new Set(allData.map((item) => item.source)))}
+        availableSources={availableSourcesForCategory}
         availableCategories={Array.from(new Set(allData.map((item) => item.cat)))}
         setSearchTerm={setSearchTerm}
         setIsSearching={setIsSearching}
         setSubmittedSearchTerm={setSubmittedSearchTerm}
       />
 
+      {/* 🛎️ Submeniu pentru filtre suplimentare */}
       {!isSearching && (
         <Submenu
           selectedSort={selectedSort}
@@ -217,92 +326,77 @@ const App = () => {
         />
       )}
 
+      {/* 🟡 Indicator de încărcare */}
       {loading ? (
         <div>
           <div className="loading">
             <div className="spinner"></div>
           </div>
-          <p style={{ textAlign:"center", color:"var(--red)", padding:"20px", fontWeight:"bold"}}>
+          <p style={{
+            textAlign: "center",
+            color: "var(--red)",
+            padding: "20px",
+            fontWeight: "bold",
+          }}>
             Se încarcă ultimele știri
           </p>
         </div>
       ) : submittedSearchTerm.trim() ? (
+        // 📌 Rezultate căutare
         <SearchResults searchTerm={submittedSearchTerm} allData={allData} />
       ) : (
+        // 📰 Știri filtrate cu paginare și memorie
         <div className="container grid-layout">
-          {sortedImageNews.length === 0 ? (
+          {/* ✅ Reinserare Carusel (minim 5 știri) */}
+          {carouselNews.length >= 4 && (
+            <Carousel key={selectedSource} items={carouselNews} />
+          )}
+
+          {/* ✅ Mesaje corectate pentru rezultatele filtrate */}
+          {totalFilteredNews.length === 0 ? (
             <p style={{ textAlign: "center", fontWeight: "bold", padding: "20px" }}>
               Nu s-a găsit nicio știre pentru acest filtru
             </p>
-          ) : sortedImageNews.length >= 5 ? (
-            <>
-              <Carousel key={selectedSource} items={sortedImageNews.slice(0, 4)} />
-              {sortedImageNews.slice(4).map((item, index) => (
-                <div className="container-news" key={index}>
-                  <div className="container-news-image">
-                    <p className="label">{item.label}</p>
-                    <img src={item.imgSrc} alt={item.text || "Image"} className="news-image" />
-                  </div>
-                  {item.href && (
-                    <a href={item.href} target="_blank" rel="noopener noreferrer">
-                      <h3>
-                        <span className="labelMobil">{item.label}.</span> {item.text}
-                      </h3>
-                      <p className="ago">
-                        <TimeAgo
-                          date={item.date}
-                          source={item.source}
-                          selectedSource={selectedSource}
-                        />
-                      </p>
-                      <div className="supra" style={{ border: ".5px solid black" }}>
-                        <TimeAgo
-                          date={item.date}
-                          source={item.source}
-                          selectedSource={selectedSource}
-                        />
-                      </div>
-                    </a>
-                  )}
-                </div>
-              ))}
-            </>
-          ) : (
-            sortedImageNews.map((item, index) => (
-              <div className="container-news" key={index}>
-                <div className="container-news-image">
-                  <p className="label">{item.label}</p>
-                  <img src={item.imgSrc} alt={item.text || "Image"} className="news-image" />
-                </div>
-                {item.href && (
-                  <a href={item.href} target="_blank" rel="noopener noreferrer">
-                    <h3>
-                      <span className="labelMobil">{item.label}.</span> {item.text}
-                    </h3>
-                    <p className="ago">
-                      <TimeAgo
-                        date={item.date}
-                        source={item.source}
-                        selectedSource={selectedSource}
-                      />
-                    </p>
-                    <div className="supra" style={{ border: ".5px solid black" }}>
-                      <TimeAgo
-                        date={item.date}
-                        source={item.source}
-                        selectedSource={selectedSource}
-                      />
-                    </div>
-                  </a>
-                )}
-              </div>
+          ) : visibleNews.length > 0 ? (
+            visibleNews.map((item) => (
+              <NewsCard key={item.id} item={item} selectedSource={selectedSource} />
             ))
+          ) : (
+            <p style={{ textAlign: "center", fontWeight: "bold", padding: "20px" }}>
+              Încarcă mai multe pentru a vedea rezultatele
+            </p>
+          )}
+
+          {/* 🟡 Buton Load More */}
+          {visibleNews.length < totalNewsCount && (
+            <div style={{ textAlign: "center", paddingTop: "40px", width: "100%" }}>
+              <button
+                onClick={handleLoadMore}
+                style={{
+                  padding: "10px 20px",
+                  fontSize: "16px",
+                  fontWeight: "bold",
+                  backgroundColor: "var(--black)",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                  borderRadius: "5px",
+                }}
+              >
+                Mai multe știri
+              </button>
+            </div>
           )}
         </div>
       )}
 
+      {/* 🔝 Buton Scroll Top */}
       <ScrollToTop />
+
+      {/* 🦶 Footer */}
       {!loading && <Footer />}
+
+      {/* 📊 Analytics */}
       <Analytics />
     </div>
   );
