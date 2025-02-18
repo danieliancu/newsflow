@@ -577,7 +577,7 @@ button {
   width:20px !important;
   height: 20px !important;
   float:left !important;
-  margin:1.5px !important;
+  margin:3px !important;
 }
 
 
@@ -791,7 +791,7 @@ button {
   
   .menu {
     padding: 15px 10px;
-    height: 60px;
+    height: 90px;
   }
 
   .slick-list {
@@ -878,7 +878,7 @@ button {
 
 .menu-item {
   display: inline-block !important;
-  padding: 10px;
+  padding: 5px 10px;
   cursor: pointer;
   color: white;  
 }
@@ -889,13 +889,16 @@ button {
   text-align: right;
 }
 
+.menu-categories-faded {
+  display: none;
+}
 
 @media only screen and (max-width: 766px) { 
   .menu-categories {
     width:100px;
     position: absolute;
     background: var(--black);
-    top: 55px;
+    top: 60px;
     width:100%;
     display: flex !important;
     overflow-x: scroll;
@@ -909,8 +912,19 @@ button {
     -ms-overflow-style: none;    
   }
 
-  .menu-item {
-    display: block !important;
+  .menu-categories-faded {
+    display: block;
+    background: linear-gradient(to right, transparent, black);
+    width: 50px;
+    height: 35px;
+    position: fixed;
+    right:0;
+  }
+
+
+
+  .menu-item:last-child {
+    padding-right: 40px;
   }
 
   .hamburger {
@@ -1113,8 +1127,8 @@ button {
     padding-top:2px;
   }
   .giphy {
-    width:5vw !important;
-    height:5vw !important;
+    width:4.5vw !important;
+    height:4.5vw !important;
   }
 }
 
@@ -1377,7 +1391,7 @@ button {
 
 
 .containerDisplayFilter {
-  top: 80px;
+  top: 70px;
   position: sticky;
   z-index:2;
   background: var(--background);
@@ -1442,8 +1456,7 @@ button {
 
 @media only screen and (max-width: 767px) {
   .containerDisplayFilter {
-    top: 90px;
-    margin-bottom: 30px !important;
+    top: 89px;
   }
 }
 

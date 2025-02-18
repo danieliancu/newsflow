@@ -15,6 +15,8 @@ const Menu = ({
 }) => {
   // Setăm un fallback, deoarece window nu este definit în SSR
   const [isMobile, setIsMobile] = useState(false);
+  // Stare pentru a gestiona toggle-ul între FaSearch și FaTimes
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Sortează dinamic categoriile
   const categories = (availableCategories || []).slice().sort((a, b) =>
@@ -27,7 +29,6 @@ const Menu = ({
   );
 
   useEffect(() => {
-    // Asigură-te că rulezi acest cod doar pe client
     const handleResize = () => {
       setIsMobile(window.innerWidth < 767);
     };
@@ -38,10 +39,10 @@ const Menu = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-
-  // Toggle pentru search bar pe mobil (dacă ai un CSS dedicat .search-open)
+  // Toggle pentru search bar pe mobil
   const toggleSearchOnMobile = () => {
     document.body.classList.toggle("search-open");
+    setIsSearchOpen((prev) => !prev);
   };
 
   // Funcție care anulează căutarea și golește inputul
@@ -75,20 +76,25 @@ const Menu = ({
           </h1>
           <span className="top-right-mobile">
             <FaUser className="login" style={{ fill: "white", fontSize: "24px" }} />
-            <FaSearch
-              className="search-mobile"
-              style={{ fill: "white", fontSize: "24px" }}
-              onClick={toggleSearchOnMobile}
-            />
+            {isSearchOpen ? (
+              <FaTimes
+                className="search-mobile"
+                style={{ fill: "red", fontSize: "24px", paddingRight:"5px" }}
+                onClick={toggleSearchOnMobile}
+              />
+            ) : (
+              <FaSearch
+                className="search-mobile"
+                style={{ fill: "white", fontSize: "24px" }}
+                onClick={toggleSearchOnMobile}
+              />
+            )}
           </span>
-
-
         </div>
 
         {/* LISTA CATEGORII */}
-        <div
-          className="menu-categories"
-        >
+        <div className="menu-categories">
+          <div className="menu-categories-faded"></div>
           {categories.map((category) => (
             <div
               key={category}
@@ -100,8 +106,7 @@ const Menu = ({
               style={
                 isMobile
                   ? {
-                      color:
-                        selectedCategory === category ? "var(--red)" : "white",
+                      color: selectedCategory === category ? "var(--red)" : "white",
                     }
                   : {
                       borderBottom:

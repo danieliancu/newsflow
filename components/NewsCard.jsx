@@ -23,8 +23,8 @@ const NewsCard = ({ item, selectedSource }) => {
         </div>
       )}
 
-      <Link legacyBehavior href={`/news/${slug}-${item.id}`}>
-        <a>
+     { /* <Link legacyBehavior href={`/news/${slug}-${item.id}`}>  */}
+        <a href={item.href}>
           <h3>
             <span className="labelMobil">{item.label}.</span> {item.text}
           </h3>
@@ -43,7 +43,7 @@ const NewsCard = ({ item, selectedSource }) => {
             />
           </div>
         </a>
-      </Link>
+      { /* </Link> */} 
     </div>
   );
 };
