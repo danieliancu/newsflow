@@ -71,7 +71,7 @@ const Menu = ({
               className="giphy"
             />
             <a href="/">
-              newsflow<span style={{ color: "#d80000" }}>.ro</span>
+              newsflow<span style={{ color: "var(--red)" }}>.ro</span>
             </a>
           </h1>
           <span className="top-right-mobile">
@@ -91,10 +91,9 @@ const Menu = ({
             )}
           </span>
         </div>
-
+        <div className="menu-categories-faded"></div>
         {/* LISTA CATEGORII */}
         <div className="menu-categories">
-          <div className="menu-categories-faded"></div>
           {categories.map((category) => (
             <div
               key={category}

@@ -126,7 +126,8 @@
   --white:white;
 
   /* Culori */
-  --red: #d80000;
+  /*  --red: #d80000; */
+  --red: red;
   --black: #0E0E0F; /* soft black, ideal pentru text */
 
   --title-font-family: 'Roboto', sans-serif;
@@ -916,9 +917,11 @@ button {
     display: block;
     background: linear-gradient(to right, transparent, black);
     width: 50px;
-    height: 35px;
+    height: 30px;
     position: fixed;
     right:0;
+    z-index:1;
+    top:60px;
   }
 
 
