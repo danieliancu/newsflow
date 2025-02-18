@@ -71,7 +71,7 @@ const Submenu = ({
   const showResetButton = hasActiveFilters;
 
   return (
-    <div>
+    <div className="containerDisplayFilter">
       <div
         className="displayFilter"
         style={{ display: hasActiveFilters ? "flex" : "none" }}

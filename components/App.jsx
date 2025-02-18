@@ -11,7 +11,7 @@ import Submenu from "./Submenu";
 import { useFilteredArticles } from "./hooks/useFilteredArticles";
 import NewsCard from "./NewsCard";
 
-// 🟡 1. Reducer pentru paginare pe categorii
+// Reducer pentru paginare pe categorii
 const initialPaginationState = {};
 function paginationReducer(state, action) {
   switch (action.type) {
@@ -27,7 +27,7 @@ function paginationReducer(state, action) {
   }
 }
 
-// 🟠 2. Reducer pentru memorarea poziției de scroll
+// Reducer pentru memorarea poziției de scroll
 const initialScrollState = {};
 function scrollReducer(state, action) {
   switch (action.type) {
@@ -44,7 +44,7 @@ function scrollReducer(state, action) {
 }
 
 const App = () => {
-  // 🟢 Reduceri pentru paginare și scroll
+  // Reducer pentru paginare și scroll
   const [paginationState, dispatchPagination] = useReducer(
     paginationReducer,
     initialPaginationState
@@ -54,7 +54,7 @@ const App = () => {
     initialScrollState
   );
 
-  // 🟡 Referință pentru scroll
+  // Referință pentru scroll
   const scrollRef = useRef();
 
   // Stări principale
@@ -74,13 +74,13 @@ const App = () => {
   const [filtersByCategory, setFiltersByCategory] = useState({});
   const [isSubmenuPanelOpen, setIsSubmenuPanelOpen] = useState(false);
 
-  // 🟡 Stare pentru pagină curentă (se actualizează cu reducer)
+  // Stare pentru pagină curentă (se actualizează cu reducer)
   const itemsPerPage = 8;
   const [currentPage, setCurrentPage] = useState(
     paginationState[selectedCategory] || 1
   );
 
-  // 📥 Fetch date la încărcare
+  // Fetch date la încărcare
   useEffect(() => {
     const fetchAllData = async () => {
       setLoading(true);
@@ -101,7 +101,7 @@ const App = () => {
     fetchAllData();
   }, []);
 
-  // 🔄 Actualizează filtrele locale când se schimbă categoria
+  // Actualizează filtrele locale când se schimbă categoria
   useEffect(() => {
     if (filtersByCategory[selectedCategory]) {
       setSubmenuSourceFilters(filtersByCategory[selectedCategory].sourceFilters);
@@ -112,7 +112,7 @@ const App = () => {
     }
   }, [selectedCategory, filtersByCategory]);
 
-  // 🟠 3. Salvăm poziția de scroll înainte de schimbarea categoriei
+  // Salvăm poziția de scroll înainte de schimbarea categoriei
   useEffect(() => {
     const saveScrollPosition = () => {
       if (selectedCategory) {
@@ -130,7 +130,7 @@ const App = () => {
     };
   }, [selectedCategory]);
 
-  // 🟡 4. Aplicăm poziția de scroll memorată la revenirea pe categorie
+  // Aplicăm poziția de scroll memorată la revenirea pe categorie
   useEffect(() => {
     if (scrollState[selectedCategory] !== undefined) {
       window.scrollTo({
@@ -140,7 +140,7 @@ const App = () => {
     }
   }, [selectedCategory, scrollState]);
 
-  // ✅ Folosim noul hook pentru filtrare și sortare
+  // Folosim noul hook pentru filtrare și sortare
   const { sortedImageNews, textNews } = useFilteredArticles(
     allData,
     selectedCategory,
@@ -150,25 +150,25 @@ const App = () => {
     selectedSort
   );
 
-  // 🟡 Calculăm știrile totale (imagini + text)
+  // Calculăm știrile totale (imagini + text)
   const totalFilteredNews = useMemo(
     () => sortedImageNews.concat(textNews),
     [sortedImageNews, textNews]
   );
 
-  // ✅ Aplicăm regula pentru carousel (minim 5 știri)
+  // Aplicăm regula pentru carousel (minim 5 știri)
   const carouselNews = useMemo(
     () => (totalFilteredNews.length >= 5 ? totalFilteredNews.slice(0, 4) : []),
     [totalFilteredNews]
   );
 
-  // ✅ Știrile rămase după carousel
+  // Știrile rămase după carousel
   const remainingNews = useMemo(
     () => totalFilteredNews.slice(carouselNews.length),
     [totalFilteredNews, carouselNews]
   );
 
-  // 🟠 Gestionare paginare cu poziția salvată
+  // Gestionare paginare cu poziția salvată
   const visibleNews = useMemo(() => {
     return remainingNews.slice(
       0,
@@ -176,9 +176,9 @@ const App = () => {
     );
   }, [remainingNews, paginationState, selectedCategory]);
 
-  // 🔥 🟡 Optimizare cu useCallback pentru funcțiile transmise în componente:
+  // Optimizare cu useCallback pentru funcțiile transmise în componente:
   
-  // ✅ 1. handleFilter
+  // handleFilter
   const handleFilter = useCallback((source) => {
     setSelectedSource(source);
     setCurrentPage(1);
@@ -189,7 +189,7 @@ const App = () => {
     });
   }, [selectedCategory]);
 
-  // ✅ 2. handleCategoryFilter
+  // handleCategoryFilter
   const handleCategoryFilter = useCallback((category) => {
     if (!category) return;
 
@@ -214,7 +214,7 @@ const App = () => {
     }
   }, [paginationState, scrollState, selectedCategory]);
 
-  // ✅ 3. handleLoadMore
+  // handleLoadMore
   const handleLoadMore = useCallback(() => {
     const nextPage = (paginationState[selectedCategory] || 1) + 1;
     setCurrentPage(nextPage);
@@ -225,7 +225,7 @@ const App = () => {
     });
   }, [paginationState, selectedCategory]);
 
-  // ✅ 4. updateSourceFilters
+  //  updateSourceFilters
   const updateSourceFilters = useCallback((newSourceFilters) => {
     setSubmenuSourceFilters(newSourceFilters);
     setFiltersByCategory((prev) => ({
@@ -237,7 +237,7 @@ const App = () => {
     }));
   }, [submenuLabelFilters, selectedCategory]);
 
-  // ✅ 5. updateLabelFilters
+  //  updateLabelFilters
   const updateLabelFilters = useCallback((newLabelFilters) => {
     setSubmenuLabelFilters(newLabelFilters);
     setFiltersByCategory((prev) => ({
@@ -249,7 +249,7 @@ const App = () => {
     }));
   }, [submenuSourceFilters, selectedCategory]);
 
-  // ✅ 6. resetFilters
+  // resetFilters
   const resetFilters = useCallback(() => {
     setSubmenuSourceFilters([]);
     setSubmenuLabelFilters([]);
@@ -259,7 +259,7 @@ const App = () => {
     }));
   }, [selectedCategory]);
 
-  // 🟢 Sursele și etichetele disponibile pentru categoria selectată - optimizate cu useMemo
+  // ursele și etichetele disponibile pentru categoria selectată - optimizate cu useMemo
   const availableSourcesForCategory = useMemo(() => 
     Array.from(
       new Set(
@@ -280,10 +280,10 @@ const App = () => {
     [allData, selectedCategory]
   );
 
-  // 🟡 Calculăm totalul știrilor pentru butonul "Încarcă mai multe"
+  // Calculăm totalul știrilor pentru butonul "Încarcă mai multe"
   const totalNewsCount = useMemo(() => remainingNews.length, [remainingNews]);
 
-  // 🖼️ Randare UI
+  // Randare UI
   return (
     <div ref={scrollRef}>
       {/* 🔝 Bara de căutare */}
@@ -295,7 +295,7 @@ const App = () => {
         setSubmittedSearchTerm={setSubmittedSearchTerm}
       />
 
-      {/* 🗂️ Meniu Categorii și Surse */}
+      {/* Meniu Categorii și Surse */}
       <Menu
         selectedSource={selectedSource}
         selectedCategory={selectedCategory}
@@ -308,7 +308,7 @@ const App = () => {
         setSubmittedSearchTerm={setSubmittedSearchTerm}
       />
 
-      {/* 🛎️ Submeniu pentru filtre suplimentare */}
+      {/* Submeniu pentru filtre suplimentare */}
       {!isSearching && (
         <Submenu
           selectedSort={selectedSort}
@@ -326,7 +326,7 @@ const App = () => {
         />
       )}
 
-      {/* 🟡 Indicator de încărcare */}
+      {/* Indicator de încărcare */}
       {loading ? (
         <div>
           <div className="loading">
@@ -342,17 +342,17 @@ const App = () => {
           </p>
         </div>
       ) : submittedSearchTerm.trim() ? (
-        // 📌 Rezultate căutare
+        // Rezultate căutare
         <SearchResults searchTerm={submittedSearchTerm} allData={allData} />
       ) : (
-        // 📰 Știri filtrate cu paginare și memorie
+        // Știri filtrate cu paginare și memorie
         <div className="container grid-layout">
           {/* ✅ Reinserare Carusel (minim 5 știri) */}
           {carouselNews.length >= 4 && (
             <Carousel key={selectedSource} items={carouselNews} />
           )}
 
-          {/* ✅ Mesaje corectate pentru rezultatele filtrate */}
+          {/*  Mesaje corectate pentru rezultatele filtrate */}
           {totalFilteredNews.length === 0 ? (
             <p style={{ textAlign: "center", fontWeight: "bold", padding: "20px" }}>
               Nu s-a găsit nicio știre pentru acest filtru
@@ -367,7 +367,7 @@ const App = () => {
             </p>
           )}
 
-          {/* 🟡 Buton Load More */}
+          {/* Buton Load More */}
           {visibleNews.length < totalNewsCount && (
             <div style={{ textAlign: "center", paddingTop: "40px", width: "100%" }}>
               <button
@@ -390,13 +390,13 @@ const App = () => {
         </div>
       )}
 
-      {/* 🔝 Buton Scroll Top */}
+      {/* Buton Scroll Top */}
       <ScrollToTop />
 
-      {/* 🦶 Footer */}
+      {/*  Footer */}
       {!loading && <Footer />}
 
-      {/* 📊 Analytics */}
+      {/* Analytics */}
       <Analytics />
     </div>
   );

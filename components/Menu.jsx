@@ -13,7 +13,6 @@ const Menu = ({
   setIsSearching,
   setSubmittedSearchTerm
 }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
   // Setăm un fallback, deoarece window nu este definit în SSR
   const [isMobile, setIsMobile] = useState(false);
 
@@ -31,11 +30,6 @@ const Menu = ({
     // Asigură-te că rulezi acest cod doar pe client
     const handleResize = () => {
       setIsMobile(window.innerWidth < 767);
-      if (window.innerWidth > 766) {
-        setMenuOpen(true);
-      } else {
-        setMenuOpen(false);
-      }
     };
 
     // Initializează starea la montare
@@ -44,9 +38,6 @@ const Menu = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const toggleMenu = () => {
-    setMenuOpen((prev) => !prev);
-  };
 
   // Toggle pentru search bar pe mobil (dacă ai un CSS dedicat .search-open)
   const toggleSearchOnMobile = () => {
@@ -91,17 +82,12 @@ const Menu = ({
             />
           </span>
 
-          {menuOpen ? (
-            <FaTimes className="hamburger" onClick={toggleMenu} />
-          ) : (
-            <FaBars className="hamburger" onClick={toggleMenu} />
-          )}
+
         </div>
 
         {/* LISTA CATEGORII */}
         <div
           className="menu-categories"
-          style={{ display: menuOpen ? "block" : "none" }}
         >
           {categories.map((category) => (
             <div
@@ -109,9 +95,6 @@ const Menu = ({
               onClick={() => {
                 resetSearch();
                 handleCategoryFilter(category);
-                if (window.innerWidth < 600) {
-                  setMenuOpen(false);
-                }
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               style={
