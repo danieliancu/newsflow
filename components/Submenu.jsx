@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { FaFilter, FaTimes } from 'react-icons/fa';
+import { useDragScroll } from './hooks/useDragScroll';
+
 
 const overlayStyle = {
   position: 'fixed',
@@ -38,7 +40,7 @@ const Submenu = ({
   onSourceFilterChange,
   submenuLabelFilters,
   onLabelFilterChange,
-  onResetFilters
+  onResetFilters,
 }) => {
   // Sortează sursele și etichetele fără a modifica array-ul original
   const sortedSources = availableSources.slice().sort((a, b) =>
@@ -48,78 +50,68 @@ const Submenu = ({
     a.localeCompare(b)
   );
 
-  const handleSourceChange = (source) => {
-    if (submenuSourceFilters.includes(source)) {
-      onSourceFilterChange(submenuSourceFilters.filter(item => item !== source));
-    } else {
-      onSourceFilterChange([...submenuSourceFilters, source]);
-    }
-  };
-
-  const handleLabelChange = (label) => {
-    if (submenuLabelFilters.includes(label)) {
-      onLabelFilterChange(submenuLabelFilters.filter(item => item !== label));
-    } else {
-      onLabelFilterChange([...submenuLabelFilters, label]);
-    }
-  };
-
-  // Variabilă pentru a verifica dacă există filtre active
-  const hasActiveFilters = submenuSourceFilters.length > 0 || submenuLabelFilters.length > 0;
-  
-  // Butonul "Dezactivează tot" este afișat dacă cel puțin un checkbox este activ
+  const hasActiveFilters =
+    submenuSourceFilters.length > 0 || submenuLabelFilters.length > 0;
   const showResetButton = hasActiveFilters;
+
+  // Referința pentru elementul ce va avea drag & scroll
+  const sliderRef = useRef(null);
+  useDragScroll(sliderRef);
 
   return (
     <div className="containerDisplayFilter">
       <div
-        className="displayFilter"
-        style={{ display: hasActiveFilters ? "flex" : "none" }}
+        style={{ display: hasActiveFilters ? 'block' : 'none' }}      
+        className="displayFilter-faded"
       >
-        {hasActiveFilters && (
-          <div style={{ padding: "4px 0" }}>Arată doar:</div>
-        )}
+        
+      </div>
+      <div
+        ref={sliderRef}
+        className="displayFilter"
+        style={{ display: hasActiveFilters ? 'flex' : 'none' }}
+      >
+        {hasActiveFilters && <div style={{ padding: '4px 0' }}>Arată doar:</div>}
         {submenuSourceFilters.map((source, index) => (
-          <div 
-            className="displayFilterElement" 
-            key={`source-${index}`}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: '#eee',
-              padding: '4px 8px',
-              borderRadius: '4px'
-            }}
-          >
+          <div className="displayFilterElement" key={`source-${index}`}>
             <span>{source}</span>
-            <FaTimes 
-              style={{ marginLeft: '4px', cursor: 'pointer', color:"red" }} 
-              onClick={() => onSourceFilterChange(submenuSourceFilters.filter(item => item !== source))}
+            <FaTimes
+              className="x"
+              onClick={() =>
+                onSourceFilterChange(
+                  submenuSourceFilters.filter((item) => item !== source)
+                )
+              }
             />
           </div>
         ))}
         {submenuLabelFilters.map((label, index) => (
-          <div  
-            className="displayFilterElement" 
+          <div
+            className="displayFilterElement"
             key={`label-${index}`}
             style={{
               display: 'flex',
               alignItems: 'center',
               background: '#eee',
               padding: '4px 8px',
-              borderRadius: '4px'
+              borderRadius: '4px',
             }}
           >
             <span>{label}</span>
-            <FaTimes 
-              style={{ marginLeft: '4px', cursor: 'pointer', color: "red" }} 
-              onClick={() => onLabelFilterChange(submenuLabelFilters.filter(item => item !== label))}
+            <FaTimes
+              style={{
+                marginLeft: '4px',
+                cursor: 'pointer',
+                color: 'red',
+              }}
+              onClick={() =>
+                onLabelFilterChange(
+                  submenuLabelFilters.filter((item) => item !== label)
+                )
+              }
             />
           </div>
         ))}
-        {hasActiveFilters && (
-          <hr style={{ height:"2px", minWidth:"100%", background:"black" }} />
-        )}
       </div>
 
       <div className="containerSubMenu">
@@ -128,18 +120,25 @@ const Submenu = ({
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
           onClick={openPanel}
         >
-          <FaFilter style={{ fontSize: "16px", display: "inline", verticalAlign: "sub", paddingRight: "2px" }} />
+          <FaFilter
+            style={{
+              fontSize: '16px',
+              display: 'inline',
+              verticalAlign: 'sub',
+              paddingRight: '2px',
+            }}
+          />
           Filtrează știrile
         </div>
-        
+
         <div className="sort">
-          <select 
-            value={selectedSort} 
+          <select
+            value={selectedSort}
             onChange={(e) => onSortChange(e.target.value)}
           >
             <option value="Cele mai noi">Cele mai noi</option>
-            <option value="Cele mai vechi">Cele mai vechi</option>            
-            <option value="Alfabetic A-Z">Alfabetic A-Z</option>            
+            <option value="Cele mai vechi">Cele mai vechi</option>
+            <option value="Alfabetic A-Z">Alfabetic A-Z</option>
             <option value="Alfabetic Z-A">Alfabetic Z-A</option>
           </select>
         </div>
@@ -148,21 +147,28 @@ const Submenu = ({
       {isPanelOpen && (
         <>
           <div style={overlayStyle} onClick={closePanel} />
-          <div 
-            className="filter-panel" 
+          <div
+            className="filter-panel"
             style={{
               ...panelStyle,
-              transform: isPanelOpen ? 'translateX(0)' : 'translateX(-100%)'
+              transform: isPanelOpen ? 'translateX(0)' : 'translateX(-100%)',
             }}
           >
-            <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <div style={{ display: "flex", alignItems:"center", gap:"10px" }}>
-                <h3 style={{ padding:"5px 0" }}>Filtre</h3>
+            <div
+              className="panel-header"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h3 style={{ padding: '5px 0' }}>Filtre</h3>
                 {showResetButton && (
                   <button
                     onClick={() => {
                       onResetFilters();
-                      // closePanel();
                     }}
                     style={{
                       padding: '4px 8px',
@@ -170,14 +176,17 @@ const Submenu = ({
                       border: '1px solid red',
                       background: 'white',
                       color: 'red',
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                   >
                     Dezactivează toate filtrele
                   </button>
-                )}   
-              </div>           
-              <FaTimes style={{ cursor: 'pointer', fontSize: '20px' }} onClick={closePanel} />
+                )}
+              </div>
+              <FaTimes
+                style={{ cursor: 'pointer', fontSize: '20px' }}
+                onClick={closePanel}
+              />
             </div>
             <div className="panel-content" style={{ display: 'flex' }}>
               <div className="sources" style={{ flex: 1, paddingRight: '10px' }}>
@@ -185,12 +194,26 @@ const Submenu = ({
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                   {sortedSources.map((source, index) => (
                     <li key={index} style={{ marginBottom: '4px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
-                        <input 
-                          type="checkbox" 
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          fontSize: '14px',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
                           className="custom-checkbox"
                           checked={submenuSourceFilters.includes(source)}
-                          onChange={() => handleSourceChange(source)}
+                          onChange={() => {
+                            if (submenuSourceFilters.includes(source)) {
+                              onSourceFilterChange(
+                                submenuSourceFilters.filter((item) => item !== source)
+                              );
+                            } else {
+                              onSourceFilterChange([...submenuSourceFilters, source]);
+                            }
+                          }}
                         />
                         {source}
                       </label>
@@ -203,12 +226,26 @@ const Submenu = ({
                 <ul style={{ listStyle: 'none', padding: 0 }}>
                   {sortedLabels.map((label, index) => (
                     <li key={index} style={{ marginBottom: '4px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', fontSize: '14px' }}>
-                        <input 
-                          type="checkbox" 
+                      <label
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          fontSize: '14px',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
                           className="custom-checkbox"
                           checked={submenuLabelFilters.includes(label)}
-                          onChange={() => handleLabelChange(label)}
+                          onChange={() => {
+                            if (submenuLabelFilters.includes(label)) {
+                              onLabelFilterChange(
+                                submenuLabelFilters.filter((item) => item !== label)
+                              );
+                            } else {
+                              onLabelFilterChange([...submenuLabelFilters, label]);
+                            }
+                          }}
                         />
                         {label}
                       </label>

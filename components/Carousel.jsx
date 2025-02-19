@@ -34,7 +34,6 @@ const Carousel = ({ items }) => {
           {items.map((item, index) => (
             <div key={index}>
               <div className="slick-art">
-                
                 <img
                   src={item.imgSrc}
                   alt={item.text || "Image"}
@@ -47,13 +46,15 @@ const Carousel = ({ items }) => {
                 />
 
                 <div className="degrade">
-                  <div class="supra">{item.source}</div>
+                  <p className="supra-desktop">{item.label}</p>
+                  <div class="supra"> <TimeAgo date={item.date} source={item.source} selectedSource={selectedSource} /></div>
                   <a
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ textDecoration: "none", color: "white" }}
                   >
+
                     <h3 style={{ margin: "5px 0" }}>{item.text}</h3>
                     <p className="ago" style={{ color:"white", fontSize:"12px" }}>
                     <TimeAgo date={item.date} source={item.source} selectedSource={selectedSource} />
