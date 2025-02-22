@@ -1514,7 +1514,7 @@ button {
 
 
 
-/* ===== Animație la apariția cardurilor ===== */
+/* ===== Animație la apariția cardurilor ===== 
 @keyframes fadeIn {
   from { 
     opacity: 0; 
@@ -1525,7 +1525,7 @@ button {
     transform: translateY(0); 
   }
 }
-
+*/
 /* ===== Stil pentru fiecare card de știre ===== */
 .container-news {
   animation: fadeIn 0.5s ease-in-out; 

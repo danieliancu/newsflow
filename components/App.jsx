@@ -82,23 +82,39 @@ const App = () => {
 
   // Fetch date la încărcare
   useEffect(() => {
-    const fetchAllData = async () => {
+    const fetchInitialData = async () => {
       setLoading(true);
       try {
-        const response = await fetch("/api/articles");
+        const response = await fetch("/api/articles?mode=initial");
         const result = await response.json();
         if (response.ok) {
           setAllData(result.data);
+          // După afișarea inițială, se efectuează încărcarea completă în background
+          fetchFullData();
         } else {
           setError(result.error || "Failed to fetch data");
         }
-      } catch {
+      } catch (error) {
         setError("Request failed");
       } finally {
         setLoading(false);
       }
     };
-    fetchAllData();
+
+    const fetchFullData = async () => {
+      try {
+        const response = await fetch("/api/articles");
+        const result = await response.json();
+        if (response.ok) {
+          // Actualizăm state-ul cu toate datele, fără a afecta vizualizarea curentă
+          setAllData(result.data);
+        }
+      } catch (error) {
+        console.error("Background fetch error:", error);
+      }
+    };
+
+    fetchInitialData();
   }, []);
 
   // Actualizează filtrele locale când se schimbă categoria
