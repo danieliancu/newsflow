@@ -1,51 +1,79 @@
-import React, { useState, useEffect } from "react";
+// components/Menu.jsx
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { FaBars, FaTimes, FaUser, FaSearch } from "react-icons/fa";
 
+// Creăm contextul cu o valoare implicită (fallback)
+const CategoryContext = createContext({
+  availableCategories: [],
+  availableSources: [],
+});
+
+// Providerul contextului, care setează valorile dinamice
+export const CategoryProvider = ({ children }) => {
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [availableSources, setAvailableSources] = useState([]);
+
+  useEffect(() => {
+    // Aici poți folosi un fetch sau altă metodă pentru a obține valorile dinamic.
+    // Exemplu cu valori statice:
+    setAvailableCategories([
+      "Actualitate",
+      "Agricultură",
+      "Economie",
+      "Mame și copii",
+      "Monden",
+      "Sănătate",
+      "Sport",
+    ]);
+    setAvailableSources(["Source1", "Source2", "Source3"]);
+  }, []);
+
+  return (
+    <CategoryContext.Provider value={{ availableCategories, availableSources }}>
+      {children}
+    </CategoryContext.Provider>
+  );
+};
+
+// Hook-ul personalizat pentru a accesa contextul
+export const useCategoryContext = () => useContext(CategoryContext);
+
+// Componenta Menu care folosește contextul pentru a obține categoriile și sursele
 const Menu = ({
   selectedSource,
   selectedCategory,
   handleFilter,
   handleCategoryFilter,
-  availableSources,
-  availableCategories,
-  // Props pentru resetare căutare:
   setSearchTerm,
   setIsSearching,
-  setSubmittedSearchTerm
+  setSubmittedSearchTerm,
+  availableCategories: propCategories,
+  availableSources: propSources,
 }) => {
-  // Setăm un fallback, deoarece window nu este definit în SSR
+  // Dacă nu primesc prin props, folosesc valorile din context
+  const { availableCategories, availableSources } = useCategoryContext();
+  const categories = (propCategories || availableCategories || [])
+    .slice()
+    .sort((a, b) => a.localeCompare(b));
+  const sources = (propSources || availableSources || [])
+    .slice()
+    .sort((a, b) => a.localeCompare(b));
+
   const [isMobile, setIsMobile] = useState(false);
-  // Stare pentru a gestiona toggle-ul între FaSearch și FaTimes
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Sortează dinamic categoriile
-  const categories = (availableCategories || []).slice().sort((a, b) =>
-    a.localeCompare(b)
-  );
-
-  // Sortează dinamic sursele
-  const sources = (availableSources || []).slice().sort((a, b) =>
-    a.localeCompare(b)
-  );
-
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 767);
-    };
-
-    // Initializează starea la montare
+    const handleResize = () => setIsMobile(window.innerWidth < 767);
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Toggle pentru search bar pe mobil
   const toggleSearchOnMobile = () => {
     document.body.classList.toggle("search-open");
     setIsSearchOpen((prev) => !prev);
   };
 
-  // Funcție care anulează căutarea și golește inputul
   const resetSearch = () => {
     setSearchTerm("");
     setIsSearching(false);
@@ -65,11 +93,7 @@ const Menu = ({
           }}
         >
           <h1 className="logo">
-            <img
-              src="/images/giphy_transparent.gif"
-              alt="Loading"
-              className="giphy"
-            />
+            <img src="/images/giphy_transparent.gif" alt="Loading" className="giphy" />
             <a href="/">
               newsflow<span style={{ color: "var(--red)" }}>.ro</span>
             </a>
@@ -79,7 +103,7 @@ const Menu = ({
             {isSearchOpen ? (
               <FaTimes
                 className="search-mobile"
-                style={{ fill: "red", fontSize: "24px", paddingRight:"5px" }}
+                style={{ fill: "red", fontSize: "24px", paddingRight: "5px" }}
                 onClick={toggleSearchOnMobile}
               />
             ) : (
@@ -92,7 +116,7 @@ const Menu = ({
           </span>
         </div>
         <div className="menu-categories-faded"></div>
-        {/* LISTA CATEGORII */}
+        {/* Lista categoriilor */}
         <div className="menu-categories">
           {categories.map((category) => (
             <div
@@ -104,13 +128,8 @@ const Menu = ({
               }}
               style={
                 isMobile
-                  ? {
-                      color: selectedCategory === category ? "var(--red)" : "white",
-                    }
-                  : {
-                      borderBottom:
-                        selectedCategory === category ? "4px solid #d80000" : "none",
-                    }
+                  ? { color: selectedCategory === category ? "var(--red)" : "white" }
+                  : { borderBottom: selectedCategory === category ? "4px solid #d80000" : "none" }
               }
               className={`menu-item ${selectedCategory === category ? "active" : ""}`}
             >

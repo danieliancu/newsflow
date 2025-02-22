@@ -1,148 +1,140 @@
 // pages/news/[slug].js
-import React from "react";
-import Link from "next/link";
+import React, { useState, useEffect } from "react";
+import mysql from "mysql2/promise";
+import dotenv from "dotenv";
+import Head from "next/head";
+import TimeAgo from "../../components/TimeAgo";
 import { useRouter } from "next/router";
-import NewsCard from "../../components/NewsCard"; // Ajustează calea după necesitate
+import Menu, { CategoryProvider } from "../../components/Menu";
+import Footer from "@/components/Footer";
+import ReactDOMServer from "react-dom/server"; // importăm pentru a obține markup-ul static
+import { FaArrowLeft, FaExternalLinkAlt } from "react-icons/fa"; // iconiță pentru back
 
-export default function NewsPage({ newsItem, otherNews }) {
+dotenv.config();
+
+// Configurarea pool-ului pentru MySQL
+const pool = mysql.createPool({
+  host: process.env.MYSQL_ADDON_HOST,
+  user: process.env.MYSQL_ADDON_USER,
+  password: process.env.MYSQL_ADDON_PASSWORD,
+  database: process.env.MYSQL_ADDON_DB,
+  port: process.env.MYSQL_ADDON_PORT,
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0,
+  acquireTimeout: 30000,
+});
+
+const NewsDetail = ({ article }) => {
   const router = useRouter();
+  const searchQuery = router.query.search;
 
-  if (router.isFallback) {
-    return <div>Se încarcă...</div>;
-  }
+  // State-uri pentru funcționalitatea de căutare din Top
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
+  const [submittedSearchTerm, setSubmittedSearchTerm] = useState("");
 
-  if (!newsItem) {
-    return <div>Știre negăsită.</div>;
-  }
+  const handleCategoryFilter = (category) => {
+    router.push(`/?category=${encodeURIComponent(category)}`);
+  };
+
+  // Funcții dummy pentru props
+  const handleFilter = () => {};
+
+
+  // Funcție care elimină SVG-urile și orice buton existent cu clasa "back-button-mobile" din .top-right-mobile,
+// apoi inserează un singur buton cu iconul de back și textul "Înapoi"
+const updateTopRightMobile = () => {
+  const elements = document.querySelectorAll(".top-right-mobile");
+  elements.forEach((el) => {
+    // Elimină orice buton existent cu clasa "back-button-mobile"
+    el.querySelectorAll("button.back-button-mobile").forEach((btn) => btn.remove());
+
+    // Elimină toate elementele SVG din interiorul elementului
+    el.querySelectorAll("svg").forEach((svg) => svg.remove());
+
+    // Creează butonul de back
+    const backButton = document.createElement("button");
+    backButton.className = "back-button-mobile";
+    
+    // Obține markup-ul static al iconiței
+    const iconMarkup = ReactDOMServer.renderToStaticMarkup(<FaArrowLeft />);
+    backButton.innerHTML = iconMarkup + " Înapoi";
+
+    // Setează evenimentul click pentru a naviga înapoi
+    backButton.addEventListener("click", () => {
+      window.history.back();
+    });
+
+    // Inserează butonul în elementul .top-right-mobile
+    el.appendChild(backButton);
+  });
+};
+
+
+  // Apelăm funcția updateTopRightMobile după montarea componentei
+  useEffect(() => {
+    updateTopRightMobile();
+  }, []);
 
   return (
-    <div style={{ padding: "20px" }}>
-      <Link href="/">&#8592; Înapoi la pagina principală</Link>
-      <div>
-        <h1>{newsItem.text}</h1>
-        <p>
-          <strong>Etichetă:</strong> {newsItem.label}
-        </p>
-        {newsItem.imgSrc && (
-          <img
-            src={newsItem.imgSrc}
-            alt={newsItem.text}
-            style={{ maxWidth: "100%", height: "auto" }}
-          />
+    <CategoryProvider>
+      {/* Componenta Top cu funcționalitatea de căutare */}
+
+      {/* Meniul cu categorii */}
+      <Menu
+        selectedCategory={article.cat}
+        selectedSource={article.source}
+        handleFilter={handleFilter}
+        handleCategoryFilter={handleCategoryFilter}
+        setSearchTerm={setSearchTerm}
+        setIsSearching={setIsSearching}
+        setSubmittedSearchTerm={setSubmittedSearchTerm}
+      />
+
+      <div className="news-detail-container">
+        <Head>
+          <title>{article.text}</title>
+        </Head>
+        <p className="label">{article.label}</p>
+        <h1>{article.text}</h1>
+        {article.imgSrc && (
+          <div className="news-detail-image">
+            <img src={article.imgSrc} alt={article.text} />
+          </div>
         )}
-        <p>
-          <strong>Sursa:</strong> {newsItem.source}
-        </p>
-        <p>
-          <strong>Data:</strong>{" "}
-          {new Date(newsItem.date).toLocaleString()}
-        </p>
-        <p>
-          <strong>Introducere:</strong> {newsItem.intro}
-        </p>
-        <p>
-          <strong>Link original:</strong>{" "}
-          <a
-            href={newsItem.href}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {newsItem.href}
-          </a>
+        {article.intro && <p className="news-intro">{article.intro}</p>}
+        <br /><br />
+        <p style={{ border:"1px solid black", display:"inline-block", padding:"10px 15px", borderRadius:"10px", marginTop:"10px" }}>
+          <TimeAgo date={article.date} source={article.source} />
+          <a href={article.href}>{article.source} <FaExternalLinkAlt style={{ display:"inline-block", verticalAlign:"text-top" }} /></a>
+          
         </p>
       </div>
-      <div style={{ marginTop: "40px" }}>
-        <h2>Alte știri din {newsItem.cat}</h2>
-        <div>
-          {otherNews && otherNews.length > 0 ? (
-            otherNews.map((item) => (
-              <NewsCard key={item.id} item={item} selectedSource="all" />
-            ))
-          ) : (
-            <p>Nu există alte știri în această categorie.</p>
-          )}
-        </div>
-      </div>
-    </div>
+      <Footer />
+    </CategoryProvider>
   );
-}
+};
 
-export async function getStaticPaths() {
-  return {
-    paths: [],
-    fallback: true,
-  };
-}
-
-export async function getStaticProps({ params }) {
+export async function getServerSideProps({ params }) {
   const { slug } = params;
   const parts = slug.split("-");
   const id = parts[parts.length - 1];
-  const idNumber = Number(id);
 
   try {
-    // Preluăm articolul principal
-    const res = await fetch(`http://localhost:3000/api/articles?id=${id}`);
-    if (!res.ok) {
+    const [rows] = await pool.query("SELECT * FROM articles WHERE id = ?", [id]);
+    if (!rows || rows.length === 0) {
       return { notFound: true };
     }
-    const data = await res.json();
-    let article;
-    if (Array.isArray(data.data)) {
-      article = data.data.find((item) => item.id === idNumber);
-    } else {
-      article = data.data;
+    const article = rows[0];
+    if (article.date) {
+      article.date = article.date.toISOString();
     }
-    if (!article) {
-      return { notFound: true };
-    }
-
-    const minimalNewsItem = {
-      id: article.id ?? null,
-      text: article.text ?? null,
-      label: article.label ?? null,
-      imgSrc: article.imgSrc ?? null,
-      source: article.source ?? null,
-      date: article.date ?? null,
-      href: article.href ?? null,
-      intro: article.intro ?? null,
-      cat: article.cat ?? null,
-    };
-
-    // Preluăm toate articolele și filtrăm pentru cele din aceeași categorie
-    const resAll = await fetch(`http://localhost:3000/api/articles`);
-    if (!resAll.ok) {
-      return { notFound: true };
-    }
-    const dataAll = await resAll.json();
-    const allArticles = Array.isArray(dataAll.data)
-      ? dataAll.data
-      : [dataAll.data];
-
-    const otherNews = allArticles
-      .filter(
-        (item) =>
-          item.cat === minimalNewsItem.cat &&
-          item.id !== minimalNewsItem.id
-      )
-      .map((item) => ({
-        id: item.id ?? null,
-        text: item.text ?? null,
-        label: item.label ?? null,
-        imgSrc: item.imgSrc ?? null,
-        source: item.source ?? null,
-        date: item.date ?? null,
-        href: item.href ?? null,
-        intro: item.intro ?? null,
-        cat: item.cat ?? null,
-      }))
-      .slice(0, 10); // Limităm la 10 articole
-
-    return {
-      props: { newsItem: minimalNewsItem, otherNews },
-      revalidate: 60,
-    };
+    return { props: { article } };
   } catch (error) {
+    console.error("Error fetching article:", error);
     return { notFound: true };
   }
 }
+
+export default NewsDetail;

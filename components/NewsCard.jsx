@@ -1,9 +1,7 @@
-import React from "react";
 import Link from "next/link";
 import TimeAgo from "./TimeAgo";
 
 const NewsCard = ({ item, selectedSource }) => {
-  // Generăm un slug SEO-friendly din textul știrii
   const slug =
     item.text
       ?.toLowerCase()
@@ -23,27 +21,25 @@ const NewsCard = ({ item, selectedSource }) => {
         </div>
       )}
 
-     { /* <Link legacyBehavior href={`/news/${slug}-${item.id}`}>  */}
-        <a href={item.href}>
-          <h3>
-            <span className="labelMobil">{item.label}.</span> {item.text}
-          </h3>
-          <p className="ago">
-            <TimeAgo
-              date={item.date}
-              source={item.source}
-              selectedSource={selectedSource}
-            />
-          </p>
-          <div className="supra" style={{ border: ".5px solid black" }}>
-            <TimeAgo
-              date={item.date}
-              source={item.source}
-              selectedSource={selectedSource}
-            />
-          </div>
-        </a>
-      { /* </Link> */} 
+      <Link href={`/news/${slug}-${item.id}`}>
+        <h3>
+          <span className="labelMobil">{item.label}.</span> {item.text}
+        </h3>
+        <p className="ago">
+          <TimeAgo
+            date={item.date}
+            source={item.source}
+            selectedSource={selectedSource}
+          />
+        </p>
+        <div className="supra" style={{ border: ".5px solid black" }}>
+          <TimeAgo
+            date={item.date}
+            source={item.source}
+            selectedSource={selectedSource}
+          />
+        </div>
+      </Link>
     </div>
   );
 };

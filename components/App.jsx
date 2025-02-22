@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useReducer, useRef, useCallback } from "react";
 import { Analytics } from "@vercel/analytics/react";
 
+import { useRouter } from "next/router";
+
 import Carousel from "./Carousel";
 import Menu from "./Menu";
 import Top from "./Top";
@@ -44,6 +46,17 @@ function scrollReducer(state, action) {
 }
 
 const App = () => {
+  
+  const router = useRouter();
+
+
+  useEffect(() => {
+    if (router.isReady && router.query.category) {
+      setSelectedCategory(router.query.category);
+    }
+  }, [router.isReady, router.query.category]);
+
+
   // Reducer pentru paginare și scroll
   const [paginationState, dispatchPagination] = useReducer(
     paginationReducer,

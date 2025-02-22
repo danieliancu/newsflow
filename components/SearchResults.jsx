@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import ScrollToTop from "./ScrollToTop";
 import { FaCaretRight } from "react-icons/fa";
 
@@ -55,23 +56,31 @@ const SearchResults = ({ searchTerm, allData }) => {
             {category} <FaCaretRight style={{ display: "inline-block" }} />
           </p>
           <div className="results-grid" style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {groupedResults[category].map((item, index) => (
-              <div className="container-news" key={index}>
-                {item.imgSrc && (
-                  <div className="searchImg">
-                    <img alt={item.text || "No title"} className="news-image" src={item.imgSrc} />
-                  </div>
-                )}
-                {item.href && (
-                  <a href={item.href} target="_blank" rel="noopener noreferrer">
+            {groupedResults[category].map((item, index) => {
+              // Construim un slug similar cu NewsCard
+              const slug =
+                item.text
+                  ?.toLowerCase()
+                  .replace(/[^a-z0-9]+/g, "-")
+                  .replace(/^-|-$/g, "") || "stire";
+              return (
+                <div className="container-news" key={index}>
+                  {item.imgSrc && (
+                    <div className="searchImg">
+                      <img alt={item.text || "No title"} className="news-image" src={item.imgSrc} />
+                    </div>
+                  )}
+                  <Link
+                    href={`/news/${slug}-${item.id}?search=${encodeURIComponent(searchTerm)}`}
+                  >
                     <p className="ago">
                       <strong className="news-source">{item.source}</strong>
                     </p>
                     <h3>{item.text}</h3>
-                  </a>
-                )}
-              </div>
-            ))}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       ))}

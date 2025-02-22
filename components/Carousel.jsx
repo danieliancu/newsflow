@@ -1,12 +1,12 @@
-import React, {useState} from "react";
+import React, { useState } from "react";
 import Slider from "react-slick";
+import Link from "next/link";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import TimeAgo from "./TimeAgo";
 
 const Carousel = ({ items }) => {
   const [selectedSource, setSelectedSource] = useState("all");
-
 
   const carouselSettings = {
     dots: false,
@@ -19,7 +19,7 @@ const Carousel = ({ items }) => {
     autoplaySpeed: 5000,
     responsive: [
       {
-        breakpoint: 600, // La ecrane cu lățimea mai mică de 600px
+        breakpoint: 600, // Pentru ecrane cu lățime mai mică de 600px
         settings: {
           slidesToShow: 1,
           slidesToScroll: 1,
@@ -30,8 +30,14 @@ const Carousel = ({ items }) => {
 
   return (
     <div className="container-all-carousel">
-        <Slider {...carouselSettings}>
-          {items.map((item, index) => (
+      <Slider {...carouselSettings}>
+        {items.map((item, index) => {
+          const slug =
+            item.text
+              ?.toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "") || "stire";
+          return (
             <div key={index}>
               <div className="slick-art">
                 <img
@@ -44,29 +50,34 @@ const Carousel = ({ items }) => {
                     display: "block",
                   }}
                 />
-
                 <div className="degrade">
                   <p className="supra-desktop">{item.label}</p>
-                  <div class="supra"> <TimeAgo date={item.date} source={item.source} selectedSource={selectedSource} /></div>
-                  <a
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ textDecoration: "none", color: "white" }}
-                  >
-
-                    <h3 style={{ margin: "5px 0" }}>{item.text}</h3>
-                    <p className="ago" style={{ color:"white", fontSize:"12px" }}>
-                    <TimeAgo date={item.date} source={item.source} selectedSource={selectedSource} />
-                    </p>
-                  </a>
+                  <div className="supra">
+                    <TimeAgo
+                      date={item.date}
+                      source={item.source}
+                      selectedSource={selectedSource}
+                    />
+                  </div>
+                  <Link href={`/news/${slug}-${item.id}`}>
+                    {/* Înlocuim <a> cu un container ce permite stilizare și navigare */}
+                    <div style={{ textDecoration: "none", color: "white", cursor: "pointer" }}>
+                      <h3 style={{ margin: "5px 0" }}>{item.text}</h3>
+                      <p className="ago" style={{ color: "white", fontSize: "12px" }}>
+                        <TimeAgo
+                          date={item.date}
+                          source={item.source}
+                          selectedSource={selectedSource}
+                        />
+                      </p>
+                    </div>
+                  </Link>
                 </div>
               </div>
             </div>
-          ))}
-        </Slider>
-
-
+          );
+        })}
+      </Slider>
     </div>
   );
 };
