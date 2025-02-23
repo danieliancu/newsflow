@@ -1567,7 +1567,6 @@ button {
 
 .news-detail-container h1 {
   font-weight: 800;
-
 }
 
 
@@ -1578,11 +1577,25 @@ button {
 
  .back-button-mobile {
     display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-width: 85px !important;
-      right: 25px !important;
-      position: relative;
-      background: white !important;
-      opacity: 1 !important;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 85px !important;
+    right: 25px !important;
+    position: relative;
+    background: white !important;
+    opacity: 1 !important;
  }
+
+
+ @media only screen and (max-width: 767px) {
+  .news-detail-container h1 {
+    font-size: 24px;
+  }
+ }
+
+
+.breadcrumbs {
+  font-size:12px;
+  margin-bottom:12px !important;
+  color:grey;
+}

@@ -1,4 +1,3 @@
-// pages/news/[slug].js
 import React, { useState, useEffect } from "react";
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
@@ -7,12 +6,15 @@ import TimeAgo from "../../components/TimeAgo";
 import { useRouter } from "next/router";
 import Menu, { CategoryProvider } from "../../components/Menu";
 import Footer from "@/components/Footer";
-import ReactDOMServer from "react-dom/server"; // importăm pentru a obține markup-ul static
-import { FaArrowLeft, FaExternalLinkAlt } from "react-icons/fa"; // iconiță pentru back
+import ReactDOMServer from "react-dom/server"; 
+import { FaFacebook, FaTwitter, FaArrowLeft, FaExternalLinkAlt } from "react-icons/fa"; 
+import { FacebookShareButton, TwitterShareButton } from "react-share";
+import Link from "next/link";
+
 
 dotenv.config();
 
-// Configurarea pool-ului pentru MySQL
+// Configurarea conexiunii la MySQL
 const pool = mysql.createPool({
   host: process.env.MYSQL_ADDON_HOST,
   user: process.env.MYSQL_ADDON_USER,
@@ -25,9 +27,8 @@ const pool = mysql.createPool({
   acquireTimeout: 30000,
 });
 
-const NewsDetail = ({ article }) => {
+const NewsDetail = ({ article, slug }) => {
   const router = useRouter();
-  const searchQuery = router.query.search;
 
   // State-uri pentru funcționalitatea de căutare din Top
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,54 +39,34 @@ const NewsDetail = ({ article }) => {
     router.push(`/?category=${encodeURIComponent(category)}`);
   };
 
-  // Funcții dummy pentru props
-  const handleFilter = () => {};
+  // Eliminarea butoanelor SVG și adăugarea butonului "Înapoi"
+  const updateTopRightMobile = () => {
+    const elements = document.querySelectorAll(".top-right-mobile");
+    elements.forEach((el) => {
+      el.querySelectorAll("button.back-button-mobile").forEach((btn) => btn.remove());
+      el.querySelectorAll("svg").forEach((svg) => svg.remove());
 
+      const backButton = document.createElement("button");
+      backButton.className = "back-button-mobile";
+      backButton.innerHTML = ReactDOMServer.renderToStaticMarkup(<FaArrowLeft />) + " Înapoi";
+      backButton.addEventListener("click", () => {
+        window.history.back();
+      });
 
-  // Funcție care elimină SVG-urile și orice buton existent cu clasa "back-button-mobile" din .top-right-mobile,
-// apoi inserează un singur buton cu iconul de back și textul "Înapoi"
-const updateTopRightMobile = () => {
-  const elements = document.querySelectorAll(".top-right-mobile");
-  elements.forEach((el) => {
-    // Elimină orice buton existent cu clasa "back-button-mobile"
-    el.querySelectorAll("button.back-button-mobile").forEach((btn) => btn.remove());
-
-    // Elimină toate elementele SVG din interiorul elementului
-    el.querySelectorAll("svg").forEach((svg) => svg.remove());
-
-    // Creează butonul de back
-    const backButton = document.createElement("button");
-    backButton.className = "back-button-mobile";
-    
-    // Obține markup-ul static al iconiței
-    const iconMarkup = ReactDOMServer.renderToStaticMarkup(<FaArrowLeft />);
-    backButton.innerHTML = iconMarkup + " Înapoi";
-
-    // Setează evenimentul click pentru a naviga înapoi
-    backButton.addEventListener("click", () => {
-      window.history.back();
+      el.appendChild(backButton);
     });
+  };
 
-    // Inserează butonul în elementul .top-right-mobile
-    el.appendChild(backButton);
-  });
-};
-
-
-  // Apelăm funcția updateTopRightMobile după montarea componentei
   useEffect(() => {
     updateTopRightMobile();
   }, []);
 
   return (
     <CategoryProvider>
-      {/* Componenta Top cu funcționalitatea de căutare */}
-
-      {/* Meniul cu categorii */}
       <Menu
         selectedCategory={article.cat}
         selectedSource={article.source}
-        handleFilter={handleFilter}
+        handleFilter={() => {}}
         handleCategoryFilter={handleCategoryFilter}
         setSearchTerm={setSearchTerm}
         setIsSearching={setIsSearching}
@@ -93,24 +74,85 @@ const updateTopRightMobile = () => {
       />
 
       <div className="news-detail-container">
+        {/* 🔹 SEO: Meta Tag-uri personalizate */}
         <Head>
-          <title>{article.text}</title>
+          <title>{article.text} | Newsflow</title>
+          <meta name="description" content={article.intro || article.text} />
+          <meta property="og:title" content={article.text} />
+          <meta property="og:description" content={article.intro || article.text} />
+          <meta property="og:image" content={article.imgSrc || "/images/default.jpg"} />
+          <meta property="og:type" content="article" />
+          <meta property="og:url" content={`https://newsflow.ro/news/${slug}`} />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content={article.text} />
+          <meta name="twitter:description" content={article.intro || article.text} />
+          <meta name="twitter:image" content={article.imgSrc || "/images/default.jpg"} />
+          <link rel="canonical" href={`https://newsflow.ro/news/${slug}`} />
+
+          <script type="application/ld+json" dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "NewsArticle",
+              "headline": article.text,
+              "image": article.imgSrc || "/images/default.jpg",
+              "datePublished": article.date,
+              "dateModified": article.date,
+              "author": {
+                "@type": "Organization",
+                "name": "Newsflow"
+              },
+              "publisher": {
+                "@type": "Organization",
+                "name": "Newsflow",
+                "logo": {
+                  "@type": "ImageObject",
+                  "url": "https://newsflow.ro/logo.png"
+                }
+              },
+              "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": `https://newsflow.ro/news/${slug}`
+              }
+            })
+          }} />
+
+
         </Head>
+        <nav className="breadcrumbs">
+          <Link href="/">Acasă</Link> &gt;
+          <span>{article.cat}</span> &gt;
+          <span>{article.text}</span>
+        </nav>    
         <p className="label">{article.label}</p>
         <h1>{article.text}</h1>
+
         {article.imgSrc && (
           <div className="news-detail-image">
             <img src={article.imgSrc} alt={article.text} />
           </div>
         )}
+
         {article.intro && <p className="news-intro">{article.intro}</p>}
         <br /><br />
-        <p style={{ border:"1px solid black", display:"inline-block", padding:"10px 15px", borderRadius:"10px", marginTop:"10px" }}>
+        <div style={{ display:"flex", justifyContent: "space-between", alignItems: "center" }}>
+        <p style={{ border: "1px solid black", display: "inline-block", padding: "10px 15px", borderRadius: "10px", marginTop: "10px" }}>
           <TimeAgo date={article.date} source={article.source} />
-          <a href={article.href}>{article.source} <FaExternalLinkAlt style={{ display:"inline-block", verticalAlign:"text-top" }} /></a>
-          
+          <a href={article.href} target="_blank" rel="noopener noreferrer">
+            {article.source} <FaExternalLinkAlt style={{ display: "inline-block", verticalAlign: "text-top" }} />
+          </a>
         </p>
+        <div>
+          <FacebookShareButton url={`https://newsflow.ro/news/${slug}`} quote={article.text}>
+            <FaFacebook size={32} style={{ color: "var(--black)", padding:"5px" }} />
+          </FacebookShareButton>
+
+          <TwitterShareButton url={`https://newsflow.ro/news/${slug}`} title={article.text}>
+            <FaTwitter size={32} style={{ color: "var(--black)", padding:"5px" }} />
+          </TwitterShareButton>
+        </div>          
       </div>
+      </div>
+
       <Footer />
     </CategoryProvider>
   );
@@ -126,11 +168,20 @@ export async function getServerSideProps({ params }) {
     if (!rows || rows.length === 0) {
       return { notFound: true };
     }
+    
     const article = rows[0];
+
     if (article.date) {
       article.date = article.date.toISOString();
     }
-    return { props: { article } };
+
+    // 🔹 Generăm slug-ul corect pentru SEO
+    const generatedSlug = article.text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    return { props: { article, slug: `${generatedSlug}-${article.id}` } };
   } catch (error) {
     console.error("Error fetching article:", error);
     return { notFound: true };
