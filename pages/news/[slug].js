@@ -8,9 +8,9 @@ import Menu, { CategoryProvider } from "../../components/Menu";
 import Footer from "@/components/Footer";
 import ReactDOMServer from "react-dom/server"; 
 import { FaFacebook, FaTwitter, FaArrowLeft, FaExternalLinkAlt } from "react-icons/fa"; 
-import { FacebookShareButton, TwitterShareButton } from "react-share";
+// Am înlocuit importul din react-share cu cel din next-share
+import { FacebookIcon, FacebookShareButton, TwitterIcon, TwitterShareButton } from "next-share";
 import Link from "next/link";
-
 
 dotenv.config();
 
@@ -80,13 +80,15 @@ const NewsDetail = ({ article, slug }) => {
           <meta name="description" content={article.intro || article.text} />
           <meta property="og:title" content={article.text} />
           <meta property="og:description" content={article.intro || article.text} />
-          <meta property="og:image" content={article.imgSrc || "/images/default.jpg"} />
+          <meta property="og:image" content={`https://newsflow.ro${article.imgSrc || "/images/default.png"}`} />
           <meta property="og:type" content="article" />
           <meta property="og:url" content={`https://newsflow.ro/news/${slug}`} />
+          <meta property="og:site_name" content="Newsflow - Cele mai recente știri" />
+          <meta property="fb:app_id" content="1309016446837808" />
           <meta name="twitter:card" content="summary_large_image" />
           <meta name="twitter:title" content={article.text} />
           <meta name="twitter:description" content={article.intro || article.text} />
-          <meta name="twitter:image" content={article.imgSrc || "/images/default.jpg"} />
+          <meta name="twitter:image" content={`https://newsflow.ro${article.imgSrc || "/images/default.png"}`} />
           <link rel="canonical" href={`https://newsflow.ro/news/${slug}`} />
 
           <script type="application/ld+json" dangerouslySetInnerHTML={{
@@ -115,8 +117,6 @@ const NewsDetail = ({ article, slug }) => {
               }
             })
           }} />
-
-
         </Head>
         <nav className="breadcrumbs">
           <Link href="/">Acasă</Link> &gt;
@@ -135,22 +135,23 @@ const NewsDetail = ({ article, slug }) => {
         {article.intro && <p className="news-intro">{article.intro}</p>}
         <br /><br />
         <div style={{ display:"flex", justifyContent: "space-between", alignItems: "center" }}>
-        <p style={{ border: "1px solid black", display: "inline-block", padding: "10px 15px", borderRadius: "10px", marginTop: "10px" }}>
-          <TimeAgo date={article.date} source={article.source} />
-          <a href={article.href} target="_blank" rel="noopener noreferrer">
-            {article.source} <FaExternalLinkAlt style={{ display: "inline-block", verticalAlign: "text-top" }} />
-          </a>
-        </p>
-        <div>
-          <FacebookShareButton url={`https://newsflow.ro/news/${slug}`} quote={article.text}>
-            <FaFacebook size={32} style={{ color: "var(--black)", padding:"5px" }} />
-          </FacebookShareButton>
+          <p style={{ border: "1px solid black", display: "inline-block", padding: "10px 15px", borderRadius: "10px", marginTop: "10px" }}>
+            <TimeAgo date={article.date} source={article.source} />
+            <a href={article.href} target="_blank" rel="noopener noreferrer">
+              {article.source} <FaExternalLinkAlt style={{ display: "inline-block", verticalAlign: "text-top" }} />
+            </a>
+          </p>
+          <div>
+            {/* Utilizare next-share în locul react-share */}
+            <FacebookShareButton url={`https://newsflow.ro/news/${slug}`} quote={article.text}>
+              <FacebookIcon size={32} style={{ color: "var(--black)", padding:"5px" }} />
+            </FacebookShareButton>
 
-          <TwitterShareButton url={`https://newsflow.ro/news/${slug}`} title={article.text}>
-            <FaTwitter size={32} style={{ color: "var(--black)", padding:"5px" }} />
-          </TwitterShareButton>
-        </div>          
-      </div>
+            <TwitterShareButton url={`https://newsflow.ro/news/${slug}`} title={article.text}>
+              <TwitterIcon size={32} style={{ color: "var(--black)", padding:"5px" }} />
+            </TwitterShareButton>
+          </div>          
+        </div>
       </div>
 
       <Footer />
