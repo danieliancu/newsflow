@@ -7,7 +7,7 @@ import { useRouter } from "next/router";
 import Menu, { CategoryProvider } from "../../components/Menu";
 import Footer from "@/components/Footer";
 import ReactDOMServer from "react-dom/server"; 
-import { FaFacebook, FaTwitter, FaArrowLeft, FaExternalLinkAlt } from "react-icons/fa"; 
+import { FaArrowLeft, FaExternalLinkAlt } from "react-icons/fa"; 
 // Am înlocuit importul din react-share cu cel din next-share
 import { FacebookIcon, FacebookShareButton, TwitterIcon, TwitterShareButton } from "next-share";
 import Link from "next/link";
@@ -176,8 +176,26 @@ export async function getServerSideProps({ params }) {
       article.date = article.date.toISOString();
     }
 
-    // 🔹 Generăm slug-ul corect pentru SEO
-    const generatedSlug = article.text
+    // Funcție care elimină diacriticele specifice limbii române
+    const removeDiacritics = (str) => {
+      // Mapare manuală pentru caracterele specifice limbii române
+      const diacriticsMap = {
+        "ă": "a",
+        "â": "a",
+        "î": "i",
+        "ș": "s",
+        "ş": "s",
+        "ț": "t",
+        "ţ": "t"
+      };
+      return str
+        .split('')
+        .map(char => diacriticsMap[char] || char)
+        .join('');
+    };
+
+    // 🔹 Generăm slug-ul corect pentru SEO folosind removeDiacritics
+    const generatedSlug = removeDiacritics(article.text)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
@@ -188,5 +206,6 @@ export async function getServerSideProps({ params }) {
     return { notFound: true };
   }
 }
+
 
 export default NewsDetail;
