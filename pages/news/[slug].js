@@ -96,7 +96,7 @@ const NewsDetail = ({ article, slug }) => {
               "@context": "https://schema.org",
               "@type": "NewsArticle",
               "headline": article.text,
-              "image": article.imgSrc || "/images/default.jpg",
+              "image": article.imgSrc || "/images/default.png",
               "datePublished": article.date,
               "dateModified": article.date,
               "author": {
