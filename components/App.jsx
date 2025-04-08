@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useReducer, useRef, useCallback } from "react";
 import { Analytics } from "@vercel/analytics/react";
-
 import { useRouter } from "next/router";
 
 import Carousel from "./Carousel";
@@ -46,9 +45,7 @@ function scrollReducer(state, action) {
 }
 
 const App = () => {
-  
   const router = useRouter();
-
 
   useEffect(() => {
     if (router.isReady && router.query.category) {
@@ -56,8 +53,7 @@ const App = () => {
     }
   }, [router.isReady, router.query.category]);
 
-
-  // Reducer pentru paginare și scroll
+  // Reduceri pentru paginare și scroll
   const [paginationState, dispatchPagination] = useReducer(
     paginationReducer,
     initialPaginationState
@@ -87,8 +83,11 @@ const App = () => {
   const [filtersByCategory, setFiltersByCategory] = useState({});
   const [isSubmenuPanelOpen, setIsSubmenuPanelOpen] = useState(false);
 
-  // Stare pentru pagină curentă (se actualizează cu reducer)
-  const itemsPerPage = 8;
+  // Definește numărul de articole afișate:
+  const initialItems = 8;         // articolele afișate inițial
+  const additionalItems = 50;       // articole adăugate la fiecare "Load more"
+
+  // Stare pentru pagină curentă (folosită împreună cu reducerul)
   const [currentPage, setCurrentPage] = useState(
     paginationState[selectedCategory] || 1
   );
@@ -197,17 +196,29 @@ const App = () => {
     [totalFilteredNews, carouselNews]
   );
 
-  // Gestionare paginare cu poziția salvată
+  // Calculul articolelor vizibile: 
+  // Dacă suntem la pagina 1 → afișăm initialItems; la fiecare pagină ulterioară adăugăm additionalItems
   const visibleNews = useMemo(() => {
-    return remainingNews.slice(
-      0,
-      (paginationState[selectedCategory] || 1) * itemsPerPage
-    );
+    const currentPageNumber = paginationState[selectedCategory] || 1;
+    const count =
+      currentPageNumber === 1
+        ? initialItems
+        : initialItems + (currentPageNumber - 1) * additionalItems;
+    return remainingNews.slice(0, count);
   }, [remainingNews, paginationState, selectedCategory]);
 
+  // Funcția handleLoadMore: crește numărul de articole afișate cu 50 la fiecare click
+  const handleLoadMore = useCallback(() => {
+    const nextPage = (paginationState[selectedCategory] || 1) + 1;
+    setCurrentPage(nextPage);
+    dispatchPagination({
+      type: "SET_PAGE",
+      category: selectedCategory,
+      page: nextPage,
+    });
+  }, [paginationState, selectedCategory]);
+
   // Optimizare cu useCallback pentru funcțiile transmise în componente:
-  
-  // handleFilter
   const handleFilter = useCallback((source) => {
     setSelectedSource(source);
     setCurrentPage(1);
@@ -218,7 +229,6 @@ const App = () => {
     });
   }, [selectedCategory]);
 
-  // handleCategoryFilter
   const handleCategoryFilter = useCallback((category) => {
     if (!category) return;
 
@@ -243,18 +253,7 @@ const App = () => {
     }
   }, [paginationState, scrollState, selectedCategory]);
 
-  // handleLoadMore
-  const handleLoadMore = useCallback(() => {
-    const nextPage = (paginationState[selectedCategory] || 1) + 1;
-    setCurrentPage(nextPage);
-    dispatchPagination({
-      type: "SET_PAGE",
-      category: selectedCategory,
-      page: nextPage,
-    });
-  }, [paginationState, selectedCategory]);
-
-  //  updateSourceFilters
+  // updateSourceFilters, updateLabelFilters, resetFilters și alte callback-uri rămân neschimbate...
   const updateSourceFilters = useCallback((newSourceFilters) => {
     setSubmenuSourceFilters(newSourceFilters);
     setFiltersByCategory((prev) => ({
@@ -266,7 +265,6 @@ const App = () => {
     }));
   }, [submenuLabelFilters, selectedCategory]);
 
-  //  updateLabelFilters
   const updateLabelFilters = useCallback((newLabelFilters) => {
     setSubmenuLabelFilters(newLabelFilters);
     setFiltersByCategory((prev) => ({
@@ -278,7 +276,6 @@ const App = () => {
     }));
   }, [submenuSourceFilters, selectedCategory]);
 
-  // resetFilters
   const resetFilters = useCallback(() => {
     setSubmenuSourceFilters([]);
     setSubmenuLabelFilters([]);
@@ -288,7 +285,7 @@ const App = () => {
     }));
   }, [selectedCategory]);
 
-  // ursele și etichetele disponibile pentru categoria selectată - optimizate cu useMemo
+  // ursele și etichetele disponibile pentru categoria selectată
   const availableSourcesForCategory = useMemo(() => 
     Array.from(
       new Set(
@@ -355,7 +352,7 @@ const App = () => {
         />
       )}
 
-      {/* Indicator de încărcare */}
+      {/* Indicator de încărcare sau afișarea știrilor */}
       {loading ? (
         <div>
           <div className="loading">
@@ -376,12 +373,12 @@ const App = () => {
       ) : (
         // Știri filtrate cu paginare și memorie
         <div className="container grid-layout">
-          {/* ✅ Reinserare Carusel (minim 5 știri) */}
+          {/* Carusel */}
           {carouselNews.length >= 4 && (
             <Carousel key={selectedSource} items={carouselNews} />
           )}
 
-          {/*  Mesaje corectate pentru rezultatele filtrate */}
+          {/* Mesaje pentru rezultatele filtrate */}
           {totalFilteredNews.length === 0 ? (
             <p style={{ textAlign: "center", fontWeight: "bold", padding: "20px" }}>
               Nu s-a găsit nicio știre pentru acest filtru
@@ -396,7 +393,7 @@ const App = () => {
             </p>
           )}
 
-          {/* Buton Load More */}
+          {/* Butonul "Încarcă mai multe" */}
           {visibleNews.length < totalNewsCount && (
             <div style={{ textAlign: "center", paddingTop: "40px", width: "100%" }}>
               <button
@@ -422,7 +419,7 @@ const App = () => {
       {/* Buton Scroll Top */}
       <ScrollToTop />
 
-      {/*  Footer */}
+      {/* Footer */}
       {!loading && <Footer />}
 
       {/* Analytics */}
