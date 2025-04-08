@@ -1,6 +1,6 @@
-// components/Menu.jsx
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { FaBars, FaTimes, FaUser, FaSearch } from "react-icons/fa";
+import Link from "next/link";
 
 // Creăm contextul cu o valoare implicită (fallback)
 const CategoryContext = createContext({
@@ -14,8 +14,7 @@ export const CategoryProvider = ({ children }) => {
   const [availableSources, setAvailableSources] = useState([]);
 
   useEffect(() => {
-    // Aici poți folosi un fetch sau altă metodă pentru a obține valorile dinamic.
-    // Exemplu cu valori statice:
+    // Valorile pot fi încărcate dinamic (fetch) – aici sunt valori statice de exemplu:
     setAvailableCategories([
       "Actualitate",
       "Agricultură",
@@ -29,7 +28,9 @@ export const CategoryProvider = ({ children }) => {
   }, []);
 
   return (
-    <CategoryContext.Provider value={{ availableCategories, availableSources }}>
+    <CategoryContext.Provider
+      value={{ availableCategories, availableSources }}
+    >
       {children}
     </CategoryContext.Provider>
   );
@@ -93,9 +94,13 @@ const Menu = ({
           }}
         >
           <h1 className="logo">
-            <img src="/images/giphy_transparent.gif" alt="Loading" className="giphy" />
+            <img
+              src="/images/giphy_transparent.gif"
+              alt="Loading"
+              className="giphy"
+            />
             <a href="/">
-              newsflow<span style={{ color: "var(--red)" }}>.ro</span>
+              newsflow<span style={{ color: "var(--red)" }}>.</span>ro
             </a>
           </h1>
           <span className="top-right-mobile">
@@ -136,6 +141,15 @@ const Menu = ({
               {category}
             </div>
           ))}
+          {/* Buton de Arhivă */}
+          <Link href="/archive">
+            <div
+              className={`menu-item ${selectedCategory === "archive" ? "active" : ""}`}
+              style={isMobile ? { color: "white" } : { borderBottom: "none" }}
+            >
+              Arhivă
+            </div>
+          </Link>
         </div>
       </div>
     </div>

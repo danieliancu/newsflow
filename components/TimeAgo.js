@@ -1,6 +1,24 @@
 import React, { useState, useEffect } from "react";
 
-const TimeAgo = ({ date, source, selectedSource }) => {
+const TimeAgo = ({ date, source, selectedSource, archived }) => {
+  // Dacă articolul este arhivat, afișăm data absolută cu numele lunii (ex: "29 martie 2025")
+  if (archived) {
+    const formattedDate = new Date(date).toLocaleDateString("ro-RO", {
+      day: "2-digit",
+      month: "long", // Afișează numele lunii, de exemplu "martie"
+      year: "numeric",
+    });
+    return (
+      <span>
+        {formattedDate}
+        <span className="bumb">&#8226;</span>
+        {selectedSource === "all" && (
+          <strong className="news-source">{source}</strong>
+        )}
+      </span>
+    );
+  }
+
   const [timeAgo, setTimeAgo] = useState("");
 
   useEffect(() => {

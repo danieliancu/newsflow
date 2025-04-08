@@ -136,7 +136,7 @@ const NewsDetail = ({ article, slug }) => {
         <br /><br />
         <div style={{ display:"flex", justifyContent: "space-between", alignItems: "center" }}>
           <p style={{ border: "1px solid black", display: "inline-block", padding: "10px 15px", borderRadius: "10px", marginTop: "10px" }}>
-            <TimeAgo date={article.date} source={article.source} />
+            <TimeAgo date={article.date} source={article.source} archived={article.isArchived} />
             <a href={article.href} target="_blank" rel="noopener noreferrer">
               {article.source} <FaExternalLinkAlt style={{ display: "inline-block", verticalAlign: "text-top" }} />
             </a>
@@ -164,21 +164,34 @@ export async function getServerSideProps({ params }) {
   const parts = slug.split("-");
   const id = parts[parts.length - 1];
 
+  let article = null;
+  let isArchived = false;
+
   try {
+    // Căutare în tabela "articles"
     const [rows] = await pool.query("SELECT * FROM articles WHERE id = ?", [id]);
-    if (!rows || rows.length === 0) {
+    if (rows && rows.length > 0) {
+      article = rows[0];
+    } else {
+      // Dacă nu se găsește în "articles", căutăm în tabela "archive"
+      const [archiveRows] = await pool.query("SELECT * FROM archive WHERE id = ?", [id]);
+      if (archiveRows && archiveRows.length > 0) {
+        article = archiveRows[0];
+        isArchived = true;
+      }
+    }
+
+    if (!article) {
+      // Nu s-a găsit articolul, returnăm 404
       return { notFound: true };
     }
-    
-    const article = rows[0];
 
     if (article.date) {
       article.date = article.date.toISOString();
     }
 
-    // Funcție care elimină diacriticele specifice limbii române
+    // Funcție pentru eliminarea diacriticelor (folosită pentru generarea slug-ului)
     const removeDiacritics = (str) => {
-      // Mapare manuală pentru caracterele specifice limbii române
       const diacriticsMap = {
         "ă": "a",
         "â": "a",
@@ -189,18 +202,18 @@ export async function getServerSideProps({ params }) {
         "ţ": "t"
       };
       return str
-        .split('')
-        .map(char => diacriticsMap[char] || char)
-        .join('');
+        .split("")
+        .map((char) => diacriticsMap[char] || char)
+        .join("");
     };
 
-    // 🔹 Generăm slug-ul corect pentru SEO folosind removeDiacritics
     const generatedSlug = removeDiacritics(article.text)
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
 
-    return { props: { article, slug: `${generatedSlug}-${article.id}` } };
+    // Transmitem flag-ul isArchived împreună cu datele articolului
+    return { props: { article: { ...article, isArchived }, slug: `${generatedSlug}-${article.id}` } };
   } catch (error) {
     console.error("Error fetching article:", error);
     return { notFound: true };
