@@ -83,16 +83,16 @@
         {% if user.is_authenticated %}
           <a class="account-icon-link saved-icon-link" href="{% url 'account_dashboard' %}" aria-label="{% translate 'Contul meu' %}" title="{% translate 'Contul meu' %}">
             <i data-lucide="user-round" aria-hidden="true"></i>
-            <span class="account-icon-badge" aria-label="{% blocktranslate with count=saved_news_count %}{{ count }} știri salvate{% endblocktranslate %}">{{ saved_news_count }}</span>
+            <span class="account-icon-badge" aria-label="{% blocktranslate with count=saved_news_count %}{{ count }} elemente salvate{% endblocktranslate %}">{{ saved_news_count }}</span>
           </a>
           {% if user.is_staff %}
             <a class="account-icon-link" href="{% url 'admin:index' %}" aria-label="{% translate 'Administrare' %}" title="{% translate 'Administrare' %}">
               <i data-lucide="shield-check" aria-hidden="true"></i>
             </a>
           {% endif %}
-          <form action="{% url 'logout' %}" method="post" class="inline-form">
+          <form id="logout-form" action="{% url 'logout' %}" method="post" class="inline-form">
             {% csrf_token %}
-            <button class="account-icon-link account-icon-button" type="submit" aria-label="{% translate 'Ieșire' %}" title="{% translate 'Ieșire' %}">
+            <button class="account-icon-link account-icon-button" type="button" data-logout-modal-open aria-label="{% translate 'Ieșire' %}" title="{% translate 'Ieșire' %}">
               <i data-lucide="log-out" aria-hidden="true"></i>
             </button>
           </form>
@@ -147,6 +147,16 @@
       <span class="footer-copyright">© {% now "Y" %} Newsflow</span>
     </div>
   </footer>
+  {% if user.is_authenticated %}
+    <dialog class="logout-confirmation-modal" data-logout-modal aria-labelledby="logout-modal-title">
+      <span class="logout-modal-icon" aria-hidden="true"><i data-lucide="log-out"></i></span>
+      <h2 id="logout-modal-title">{% translate "Ești sigur că vrei să ieși din cont?" %}</h2>
+      <div class="logout-modal-actions">
+        <button class="button logout-confirm-button" type="submit" form="logout-form">{% translate "Da" %}</button>
+        <button class="logout-cancel-button" type="button" data-logout-modal-close>{% translate "Nu" %}</button>
+      </div>
+    </dialog>
+  {% endif %}
   <div class="action-toast" data-action-toast hidden>
     <span data-toast-message></span>
     <button type="button" data-toast-undo hidden>{% translate "Anulează" %}</button>
@@ -154,6 +164,16 @@
   <script src="{% static 'vendor/lucide/lucide.min.js' %}"></script>
   <script>
     lucide.createIcons();
+    const logoutModal = document.querySelector("[data-logout-modal]");
+    document.addEventListener("click", (event) => {
+      if (event.target.closest("[data-logout-modal-open]") && logoutModal) {
+        logoutModal.showModal();
+        logoutModal.querySelector("[data-logout-modal-close]").focus();
+        return;
+      }
+      if (event.target.closest("[data-logout-modal-close]")) logoutModal?.close();
+      if (event.target === logoutModal) logoutModal.close();
+    });
     document.addEventListener("submit", async (event) => {
       const form = event.target.closest("[data-story-action]");
       if (!form || !window.fetch) return;

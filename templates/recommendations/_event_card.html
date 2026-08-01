@@ -1,0 +1,26 @@
+{% load i18n %}
+<article class="event-archive-card{% if event_card_class %} {{ event_card_class }}{% endif %}">
+  {% if event.representative_image_url %}
+    <a class="event-archive-image" href="{% url 'event_detail' event.slug %}" aria-label="{{ event.title }}">
+      <img src="{{ event.representative_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-image-remove="parent" onerror="window.newsflowRetryImage(this)">
+    </a>
+  {% endif %}
+  <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
+  <p>{{ event.summary|truncatewords:40 }}</p>
+  <footer>
+    <div class="event-card-meta">
+      <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse distincte" %}</span>
+      <span class="event-card-meta-separator" aria-hidden="true">•</span>
+      <span>{% translate "Actualizat" %} {{ event.last_generated_at|date:"H:i" }}</span>
+    </div>
+    {% if user.is_authenticated %}
+      <form method="post" action="{% url 'toggle_saved_event' event.id %}"{% if saved_page %} data-remove-on-unsave="true"{% endif %}>
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% if saved_page %}saved{% else %}{{ request.get_full_path }}{% endif %}">
+        <button class="icon-button{% if saved_page or event.id in saved_event_ids %} is-active{% endif %}" type="submit" aria-label="{% if saved_page or event.id in saved_event_ids %}{% translate 'Elimină salvarea' %}{% else %}{% translate 'Salvează subiectul' %}{% endif %}" title="{% if saved_page or event.id in saved_event_ids %}{% translate 'Elimină salvarea' %}{% else %}{% translate 'Salvează subiectul' %}{% endif %}">
+          <i data-lucide="bookmark" aria-hidden="true"></i>
+        </button>
+      </form>
+    {% endif %}
+  </footer>
+</article>

@@ -32,6 +32,7 @@ urlpatterns = [
     path("hidden/", views.hidden_content, name="hidden_content"),
     path("article/<int:article_id>/open/", views.open_article, name="open_article"),
     path("article/<int:article_id>/save/", views.toggle_saved, name="toggle_saved"),
+    path("event/<int:event_id>/save/", views.toggle_saved_event, name="toggle_saved_event"),
     path("article/<int:article_id>/hide/", views.hide_article, name="hide_article"),
     path("article/<int:article_id>/restore/", views.restore_article, name="restore_article"),
     path("source/<int:source_id>/restore/", views.restore_source, name="restore_source"),

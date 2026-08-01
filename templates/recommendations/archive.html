@@ -18,14 +18,12 @@
   <main class="feed archive-feed">
     {% if topic_events %}
       <section class="event-list" aria-labelledby="event-list-title">
-        <h2 id="event-list-title">{% translate "Subiecte urmărite" %}</h2>
-        {% for event in topic_events %}
-          <article class="story-card">
-            <h3><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h3>
-            <p>{{ event.summary|truncatewords:36 }}</p>
-            <small>{{ event.generated_source_count }} {% translate "surse" %} · {% translate "Actualizat" %} {{ event.last_generated_at|date:"d M Y, H:i" }}</small>
-          </article>
-        {% endfor %}
+        <h2 id="event-list-title">{% blocktranslate with topic=archive_entity.name %}Subiectele zilei despre {{ topic }}{% endblocktranslate %}</h2>
+        <div class="events-page-grid">
+          {% for event in topic_events %}
+            {% include "recommendations/_event_card.html" %}
+          {% endfor %}
+        </div>
       </section>
     {% endif %}
     {% for article in articles %}

@@ -10,7 +10,7 @@ from accounts.models import CategoryPreference, FollowedTerm, SourcePreference, 
 from news.models import Article, ArticleTopic, Event, EventArticle, RefreshRun, Source
 from taxonomy.models import Category, Topic
 
-from .models import Interaction, Recommendation
+from .models import Interaction, Recommendation, SavedEvent
 from .services import ranked_feed
 
 
@@ -533,6 +533,48 @@ class FeedInterfaceTests(TestCase):
             ).exists()
         )
 
+    def test_event_can_be_saved_and_appears_in_saved_page(self):
+        event = Event.objects.create(
+            title="Subiect AI salvat",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză publică pentru test.",
+            generated_source_count=3,
+            first_generated_at=timezone.now(),
+            last_generated_at=timezone.now(),
+        )
+
+        saved = self.client.post(
+            f"/event/{event.pk}/save/", HTTP_ACCEPT="application/json"
+        )
+        archive = self.client.get("/evenimente/")
+        detail = self.client.get(event.public_path)
+        saved_page = self.client.get("/saved/")
+
+        self.assertTrue(saved.json()["saved"])
+        self.assertTrue(SavedEvent.objects.filter(user=self.user, event=event).exists())
+        self.assertContains(archive, 'icon-button is-active')
+        self.assertContains(detail, "Salvat")
+        self.assertContains(saved_page, "Subiect AI salvat")
+        self.assertContains(saved_page, ">1</span>")
+
+    def test_event_can_be_removed_from_saved_page(self):
+        event = Event.objects.create(
+            title="Subiect AI de eliminat",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză publică pentru test.",
+            generated_source_count=3,
+            first_generated_at=timezone.now(),
+            last_generated_at=timezone.now(),
+        )
+        SavedEvent.objects.create(user=self.user, event=event)
+
+        response = self.client.post(
+            f"/event/{event.pk}/save/", {"next": "saved"}
+        )
+
+        self.assertRedirects(response, "/saved/")
+        self.assertFalse(SavedEvent.objects.filter(user=self.user, event=event).exists())
+
     def test_preferences_split_matching_and_other_news(self):
         self.article.primary_category = self.category
         self.article.save(update_fields=["primary_category"])
@@ -883,6 +925,37 @@ class SeoArchiveTests(TestCase):
         self.assertContains(
             response, '<meta name="robots" content="noindex,follow">', html=True
         )
+
+    def test_topic_archive_uses_standard_cards_and_only_todays_events(self):
+        articles = list(
+            Article.objects.filter(topic_matches__topic=self.topic).order_by("pk")[:2]
+        )
+        today_event = Event.objects.create(
+            title="Subiectul de astăzi",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteza subiectului publicat astăzi.",
+            generated_source_count=3,
+            first_generated_at=timezone.now(),
+            last_generated_at=timezone.now(),
+        )
+        old_event = Event.objects.create(
+            title="Subiectul de ieri",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteza subiectului publicat ieri.",
+            generated_source_count=3,
+            first_generated_at=timezone.now() - timedelta(days=1),
+            last_generated_at=timezone.now() - timedelta(days=1),
+        )
+        EventArticle.objects.create(event=today_event, article=articles[0])
+        EventArticle.objects.create(event=old_event, article=articles[1])
+
+        response = self.client.get(f"/topic/{self.topic.slug}/")
+
+        self.assertContains(response, "Subiectul de astăzi")
+        self.assertNotContains(response, "Subiectul de ieri")
+        self.assertContains(response, 'class="event-archive-card"')
+        self.assertContains(response, "surse distincte")
+        self.assertContains(response, "Actualizat")
 
     def test_filter_combinations_are_noindex(self):
         response = self.client.get(

@@ -6,17 +6,33 @@
 <header class="intro saved-intro">
   <p class="eyebrow">{% translate "Colecția ta" %}</p>
   <h1>{% translate "Știri salvate" %}</h1>
-  <p>{% blocktranslate count counter=saved_news_count %}{{ counter }} articol păstrat pentru mai târziu.{% plural %}{{ counter }} articole păstrate pentru mai târziu.{% endblocktranslate %}</p>
+  <p>{% blocktranslate count counter=saved_news_count %}{{ counter }} element păstrat pentru mai târziu.{% plural %}{{ counter }} elemente păstrate pentru mai târziu.{% endblocktranslate %}</p>
 </header>
-<div class="feed saved-feed">
-  {% for article in articles %}
-    {% include "recommendations/_story_card.html" with saved_page=True %}
-  {% empty %}
-    <section class="empty">
-      <h2>{% translate "Nu ai știri salvate." %}</h2>
-      <p>{% translate "Folosește butonul „Salvează” din flux și le vei găsi aici." %}</p>
-      <a class="button small" href="{% url 'feed' %}">{% translate "Înapoi la știri" %}</a>
-    </section>
-  {% endfor %}
-</div>
+{% if events %}
+  <section class="saved-content-section saved-events">
+    <h2>{% translate "Subiectele zilei" %}</h2>
+    <div class="events-page-grid">
+      {% for event in events %}
+        {% include "recommendations/_event_card.html" with saved_page=True %}
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+{% if articles %}
+  <section class="saved-content-section saved-articles">
+    <h2>{% translate "Articole" %}</h2>
+    <div class="feed saved-feed">
+      {% for article in articles %}
+        {% include "recommendations/_story_card.html" with saved_page=True %}
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+{% if not events and not articles %}
+  <section class="empty">
+    <h2>{% translate "Nu ai știri salvate." %}</h2>
+    <p>{% translate "Folosește butonul „Salvează” din flux și le vei găsi aici." %}</p>
+    <a class="button small" href="{% url 'feed' %}">{% translate "Înapoi la știri" %}</a>
+  </section>
+{% endif %}
 {% endblock %}

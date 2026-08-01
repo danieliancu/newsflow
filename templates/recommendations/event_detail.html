@@ -23,6 +23,15 @@
         {% translate "Sinteză bazată pe" %}
         {{ event.generated_source_count }} {% translate "surse distincte" %}.
       </p>
+      {% if user.is_authenticated %}
+        <form class="event-save-form" method="post" action="{% url 'toggle_saved_event' event.id %}">
+          {% csrf_token %}<input type="hidden" name="next" value="{{ request.path }}">
+          <button class="event-save-action{% if event_is_saved %} is-active{% endif %}" type="submit">
+            <i data-lucide="bookmark" aria-hidden="true"></i>
+            <span>{% if event_is_saved %}{% translate "Salvat" %}{% else %}{% translate "Salvează" %}{% endif %}</span>
+          </button>
+        </form>
+      {% endif %}
       {% if not event.representative_image_url %}
         <button class="event-share-button" type="button" data-share-modal-open data-share-title="{{ event.title }}" data-share-url="{{ canonical_url }}">
           <i data-lucide="share-2" aria-hidden="true"></i><span>{% translate "Distribuie" %}</span>

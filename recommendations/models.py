@@ -39,3 +39,25 @@ class Interaction(models.Model):
                 name="unique_user_article_interaction_kind",
             )
         ]
+
+
+class SavedEvent(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="saved_events",
+    )
+    event = models.ForeignKey(
+        "news.Event",
+        on_delete=models.CASCADE,
+        related_name="saved_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "event"], name="unique_user_saved_event"
+            )
+        ]

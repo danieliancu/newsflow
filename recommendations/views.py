@@ -29,7 +29,7 @@ from news.services import ingest_source
 from news.jobs import enqueue_refresh
 from taxonomy.models import Category, Topic
 
-from .models import Interaction
+from .models import Interaction, SavedEvent
 from .services import ranked_feed
 from .technical_content import TECHNICAL_PAGES as TECHNICAL_PAGE_CONTENT
 
@@ -271,6 +271,12 @@ def _saved_ids(request):
     )
 
 
+def _saved_event_ids(request):
+    if not request.user.is_authenticated:
+        return set()
+    return set(request.user.saved_events.values_list("event_id", flat=True))
+
+
 def _archive_navigation():
     articles = Article.objects.filter(
         processing_status=Article.ProcessingStatus.PROCESSED,
@@ -357,6 +363,7 @@ def _archive_response(
         "page_obj": page_obj,
         "articles": page_obj.object_list,
         "saved_ids": _saved_ids(request),
+        "saved_event_ids": _saved_event_ids(request),
         "canonical_url": canonical_url,
         "robots_value": "index,follow" if indexable else "noindex,follow",
         "og_title": title,
@@ -367,10 +374,15 @@ def _archive_response(
     }
     context.update(_archive_navigation())
     if archive_type == "topic":
-        context["topic_events"] = (
+        today = timezone.localdate()
+        context["topic_events"] = _with_representative_images(
             Event.objects.filter(
                 status__in=[Event.Status.INDEXABLE, Event.Status.STABLE],
                 articles__topic_matches__topic=entity,
+            )
+            .filter(
+                Q(first_generated_at__date=today)
+                | Q(first_generated_at=None, last_generated_at__date=today)
             )
             .distinct()
             .order_by("-last_article_at")[:12]
@@ -488,6 +500,7 @@ def events_archive(request):
         "page_obj": page_obj,
         "current_events": current_events,
         "current_events_count": len(current_events),
+        "saved_event_ids": _saved_event_ids(request),
         "previous_event_groups": previous_event_groups,
         "canonical_url": _public_url(canonical_path),
         "robots_value": "index,follow",
@@ -650,6 +663,10 @@ def event_detail(request, slug):
             "structured_data": json.dumps(
                 structured_data, ensure_ascii=False
             ).replace("<", "\\u003c"),
+            "event_is_saved": (
+                request.user.is_authenticated
+                and request.user.saved_events.filter(event=event).exists()
+            ),
         },
     )
 
@@ -888,6 +905,7 @@ def search_results(request):
             "events_count": len(events),
             "total_results": page_obj.paginator.count + len(events),
             "saved_ids": saved_ids,
+            "saved_event_ids": _saved_event_ids(request),
             "canonical_url": _public_url(request.path),
         },
     )
@@ -1164,7 +1182,19 @@ def saved_news(request):
         .select_related("source", "primary_category")
         .order_by("-published_at", "-collected_at")
     )
-    return render(request, "recommendations/saved.html", {"articles": articles})
+    events = _with_representative_images(
+        _public_events().filter(saved_by__user=request.user).distinct()
+    )
+    return render(
+        request,
+        "recommendations/saved.html",
+        {
+            "articles": articles,
+            "events": events,
+            "saved_ids": set(saved_article_ids),
+            "saved_event_ids": _saved_event_ids(request),
+        },
+    )
 
 
 @login_required
@@ -1253,6 +1283,39 @@ def toggle_saved(request, article_id):
             }
         )
     return redirect("saved_news" if request.POST.get("next") == "saved" else "feed")
+
+
+@require_POST
+@login_required
+def toggle_saved_event(request, event_id):
+    event = get_object_or_404(_public_events(), pk=event_id)
+    saved = SavedEvent.objects.filter(user=request.user, event=event)
+    if saved.exists():
+        saved.delete()
+        is_saved = False
+        messages.info(request, "Subiectul a fost scos din lista salvată.")
+    else:
+        SavedEvent.objects.create(user=request.user, event=event)
+        is_saved = True
+        messages.success(request, "Subiect salvat.")
+    if _wants_json(request):
+        article_count = request.user.interactions.filter(
+            kind=Interaction.Kind.SAVED
+        ).count()
+        return JsonResponse(
+            {
+                "saved": is_saved,
+                "saved_count": article_count + request.user.saved_events.count(),
+            }
+        )
+    target = request.POST.get("next", reverse("events_archive"))
+    if target == "saved":
+        target = reverse("saved_news")
+    elif not url_has_allowed_host_and_scheme(
+        target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        target = reverse("events_archive")
+    return redirect(target)
 
 
 @require_POST

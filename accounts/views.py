@@ -26,7 +26,7 @@ from .two_factor import (
     token_hash,
 )
 from news.models import Article, Source
-from recommendations.models import Interaction
+from recommendations.models import Interaction, SavedEvent
 from taxonomy.models import Category, Topic
 
 
@@ -36,7 +36,8 @@ def account_dashboard(request):
         request,
         "accounts/dashboard.html",
         {
-            "saved_count": request.user.interactions.filter(kind="saved").count(),
+            "saved_count": request.user.interactions.filter(kind="saved").count()
+            + SavedEvent.objects.filter(user=request.user).count(),
             "preferred_sources_count": request.user.source_preferences.filter(
                 is_blocked=False
             ).count(),

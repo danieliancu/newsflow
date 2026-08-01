@@ -21,19 +21,7 @@
     {% if page_obj.number == 1 %}
       <div class="events-page-grid events-current-grid">
         {% for event in current_events %}
-          <article class="event-archive-card">
-            {% if event.representative_image_url %}
-              <a class="event-archive-image" href="{% url 'event_detail' event.slug %}" aria-label="{{ event.title }}">
-                <img src="{{ event.representative_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-image-remove="parent" onerror="window.newsflowRetryImage(this)">
-              </a>
-            {% endif %}
-            <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
-            <p>{{ event.summary|truncatewords:55 }}</p>
-            <footer>
-              <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse distincte" %}</span>
-              <span>{% translate "Actualizat" %} {{ event.last_generated_at|date:"H:i" }}</span>
-            </footer>
-          </article>
+          {% include "recommendations/_event_card.html" %}
         {% empty %}
           <section class="empty events-empty">
             <h2>{% translate "Nu există încă subiecte astăzi." %}</h2>
@@ -51,19 +39,7 @@
         </div>
         <div class="events-page-grid previous-events-grid">
           {% for event in group.events %}
-            <article class="event-archive-card event-archive-card--previous">
-              {% if event.representative_image_url %}
-                <a class="event-archive-image" href="{% url 'event_detail' event.slug %}" aria-label="{{ event.title }}">
-                  <img src="{{ event.representative_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-image-remove="parent" onerror="window.newsflowRetryImage(this)">
-                </a>
-              {% endif %}
-              <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
-              <p>{{ event.summary|truncatewords:32 }}</p>
-              <footer>
-                <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse distincte" %}</span>
-                <span>{{ event.last_generated_at|date:"H:i" }}</span>
-              </footer>
-            </article>
+            {% include "recommendations/_event_card.html" with event_card_class="event-archive-card--previous" %}
           {% endfor %}
         </div>
       </section>

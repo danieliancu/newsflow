@@ -1,4 +1,4 @@
-from .models import Interaction
+from .models import Interaction, SavedEvent
 from django.db.models import Max
 from news.models import Article
 from news.models import RefreshRun, Source
@@ -8,13 +8,13 @@ from taxonomy.models import Category
 def saved_news_count(request):
     if not request.user.is_authenticated:
         return {"saved_news_count": 0}
-    count = (
+    article_count = (
         Interaction.objects.filter(user=request.user, kind=Interaction.Kind.SAVED)
         .values("article_id")
         .distinct()
         .count()
     )
-    return {"saved_news_count": count}
+    return {"saved_news_count": article_count + SavedEvent.objects.filter(user=request.user).count()}
 
 
 def navigation_categories(request):

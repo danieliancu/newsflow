@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from .models import Interaction, Recommendation
+from .models import Interaction, Recommendation, SavedEvent
 
 
 @admin.register(Recommendation)
@@ -17,3 +17,10 @@ class InteractionAdmin(ModelAdmin):
     list_display = ("user", "article", "kind", "created_at")
     list_filter = ("kind", "created_at")
     search_fields = ("user__email", "article__title")
+
+
+@admin.register(SavedEvent)
+class SavedEventAdmin(ModelAdmin):
+    list_display = ("user", "event", "created_at")
+    search_fields = ("user__email", "event__title")
+    readonly_fields = ("created_at",)
