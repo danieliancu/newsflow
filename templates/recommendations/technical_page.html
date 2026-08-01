@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ technical_page.title }} · Newsflow{% endblock %}
+{% block meta_description %}<meta name="description" content="{{ technical_page.description }}">{% endblock %}
+{% block content %}
+  <article class="technical-page">
+    <header>
+      <p class="eyebrow">{% translate "NEWSFLOW" %}</p>
+      <h1>{{ technical_page.title }}</h1>
+      <p>{{ technical_page.intro }}</p>
+    </header>
+    <div class="technical-page-sections">
+      {% for heading, body in technical_page.sections %}
+        <section>
+          <h2>{{ heading }}</h2>
+          <div class="technical-section-body">
+            {% if heading == "Email" %}<p><a href="mailto:{{ public_contact_email }}">{{ public_contact_email }}</a></p>{% else %}{{ body|linebreaks }}{% endif %}
+          </div>
+        </section>
+      {% endfor %}
+    </div>
+    <p class="technical-page-note">{% translate "Ultima actualizare: 31 iulie 2026." %}</p>
+  </article>
+{% endblock %}

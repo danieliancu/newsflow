@@ -1,0 +1,15 @@
+python -m pip install django
+python manage.py migrate
+python manage.py runserver
+Apoi deschizi http://127.0.0.1:8000/.
+
+
+
+Dacă promptul începe deja cu (.venv), rulezi doar:
+python manage.py runserver
+
+
+
+Dacă modifici modelele, atunci rulezi:
+python manage.py makemigrations
+python manage.py migrate

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Căutare" %}{% if query %}: {{ query }}{% endif %} · Newsflow{% endblock %}
+{% block meta_description %}<meta name="description" content="Rezultate de căutare în publicațiile agregate de Newsflow.">{% endblock %}
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% block content %}
+<header class="search-heading">
+  <p class="eyebrow">{% translate "Căutare" %}</p>
+  {% if query %}
+    <h1>{% translate "Rezultate pentru" %} „{{ query }}”</h1>
+    <p class="muted search-summary">
+      <span>
+        {% blocktranslate count counter=total_results %}
+          Un rezultat găsit
+        {% plural %}
+          {{ counter }} rezultate găsite
+        {% endblocktranslate %}
+      </span>
+      <span aria-hidden="true">•</span>
+      <a href="{% url 'feed' %}">{% translate "Înapoi la homepage" %}</a>
+    </p>
+  {% else %}
+    <h1>{% translate "Caută în știri" %}</h1>
+    <p class="muted">{% translate "Introdu un termen în bara de căutare de mai sus." %}</p>
+  {% endif %}
+</header>
+
+{% if events %}
+  <section class="search-events" aria-labelledby="search-events-title">
+    <div class="section-heading-row">
+      <p class="eyebrow" id="search-events-title">{% translate "Subiectele zilei" %}</p>
+      <span class="new-articles-pill">{% blocktranslate count counter=events_count %}{{ counter }} subiect{% plural %}{{ counter }} subiecte{% endblocktranslate %}</span>
+    </div>
+    <div class="events-page-grid search-events-grid">
+      {% for event in events %}
+        <article class="event-archive-card">
+          {% if event.representative_image_url %}
+            <a class="event-archive-image" href="{% url 'event_detail' event.slug %}" aria-label="{{ event.title }}">
+              <img src="{{ event.representative_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-image-remove="parent" onerror="window.newsflowRetryImage(this)">
+            </a>
+          {% endif %}
+          <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
+          <p>{{ event.summary|truncatewords:32 }}</p>
+          <footer>
+            <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse distincte" %}</span>
+            <span>{% translate "Actualizat" %} {{ event.last_generated_at|date:"d M, H:i" }}</span>
+          </footer>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{% if articles %}
+  {% if events %}<p class="eyebrow search-articles-heading">{% translate "Articole" %}</p>{% endif %}
+  <div class="feed search-feed">
+    {% for article in articles %}
+      {% include "recommendations/_story_card.html" %}
+    {% endfor %}
+  </div>
+{% elif query and not events %}
+  <section class="empty search-empty">
+    <h2>{% translate "Nu am găsit rezultate." %}</h2>
+    <p>{% translate "Încearcă un termen mai scurt sau numele unei publicații." %}</p>
+  </section>
+{% endif %}
+
+{% if page_obj.paginator.num_pages > 1 %}
+  <nav class="pagination" aria-label="{% translate 'Paginarea rezultatelor' %}">
+    {% if page_obj.has_previous %}
+      <a class="pagination-arrow" href="?q={{ query|urlencode }}&page={{ page_obj.previous_page_number }}" aria-label="{% translate 'Pagina anterioară' %}" title="{% translate 'Pagina anterioară' %}">
+        <i data-lucide="arrow-left" aria-hidden="true"></i>
+      </a>
+    {% endif %}
+    <span>{% blocktranslate with current=page_obj.number total=page_obj.paginator.num_pages %}Pagina {{ current }} din {{ total }}{% endblocktranslate %}</span>
+    {% if page_obj.has_next %}
+      <a class="pagination-arrow" href="?q={{ query|urlencode }}&page={{ page_obj.next_page_number }}" aria-label="{% translate 'Pagina următoare' %}" title="{% translate 'Pagina următoare' %}">
+        <i data-lucide="arrow-right" aria-hidden="true"></i>
+      </a>
+    {% endif %}
+  </nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends "admin/change_form.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin-dashboard.css' %}?v=8">
+{% endblock %}
+
+{% block content %}
+<div class="nf-refresh-report">
+  <header class="nf-refresh-report-hero nf-refresh-report-hero--{{ original.status }}">
+    <div>
+      <a class="nf-report-back" href="{% url 'admin:news_refreshrun_changelist' %}">← Istoric refresh</a>
+      <span class="nf-section-label">RAPORT RULARE #{{ original.pk }}</span>
+      <h1>{{ original.get_trigger_display }} · {{ original.started_at|date:"d M Y, H:i" }}</h1>
+      <p>
+        {{ original.get_status_display }}
+        {% if original.finished_at %} · finalizat la {{ original.finished_at|date:"H:i:s" }}{% endif %}
+        · {{ refresh_report.duration_minutes }}m {{ refresh_report.duration_remainder }}s
+      </p>
+    </div>
+    <span class="nf-report-status nf-report-status--{{ original.status }}">{{ original.get_status_display }}</span>
+  </header>
+
+  <div class="nf-report-kpis">
+    <section class="nf-report-kpi nf-report-kpi--green">
+      <span class="nf-report-kpi-icon"><i data-lucide="rss" aria-hidden="true"></i></span>
+      <div><small>Surse actualizate</small><strong>{{ original.sources_succeeded }}/{{ original.sources_attempted }}</strong><span>{{ refresh_report.source_success_percent }}% succes</span></div>
+    </section>
+    <section class="nf-report-kpi nf-report-kpi--blue">
+      <span class="nf-report-kpi-icon"><i data-lucide="newspaper" aria-hidden="true"></i></span>
+      <div><small>Articole procesate</small><strong>{{ refresh_report.processed_count }}</strong><span>{{ refresh_report.eligible_count }} eligibile · {{ refresh_report.duplicate_count }} duplicate</span></div>
+    </section>
+    <section class="nf-report-kpi nf-report-kpi--violet">
+      <span class="nf-report-kpi-icon"><i data-lucide="bot" aria-hidden="true"></i></span>
+      <div><small>Consum AI</small><strong>{{ original.ai_calls }}</strong><span>{{ original.input_tokens|add:original.output_tokens }} tokeni</span></div>
+    </section>
+    <section class="nf-report-kpi nf-report-kpi--amber">
+      <span class="nf-report-kpi-icon"><i data-lucide="circle-pound-sterling" aria-hidden="true"></i></span>
+      <div><small>Cost total</small><strong>£{{ original.cost_gbp|floatformat:6 }}</strong><span>Clasificare £{{ original.classification_cost_gbp|floatformat:6 }}</span></div>
+    </section>
+  </div>
+
+  <div class="nf-report-grid">
+    <section class="nf-report-panel">
+      <div class="nf-panel-heading"><div><span class="nf-section-label">PIPELINE</span><h2>Rezultatul colectării</h2></div></div>
+      <div class="nf-report-progress-list">
+        <div><span><b>Surse reușite</b><em>{{ original.sources_succeeded }} din {{ original.sources_attempted }}</em></span><div><i style="width: {{ refresh_report.source_success_percent }}%"></i></div></div>
+        <div><span><b>Articole eligibile</b><em>{{ refresh_report.eligible_count }}</em></span><div><i style="width: {% if refresh_report.processed_count %}{% widthratio refresh_report.eligible_count refresh_report.processed_count 100 %}{% else %}0{% endif %}%"></i></div></div>
+        <div><span><b>Duplicate eliminate</b><em>{{ refresh_report.duplicate_count }}</em></span><div class="is-muted"><i style="width: {% if refresh_report.processed_count %}{% widthratio refresh_report.duplicate_count refresh_report.processed_count 100 %}{% else %}0{% endif %}%"></i></div></div>
+      </div>
+      <dl class="nf-report-details">
+        <div><dt>Declanșare</dt><dd>{{ original.get_trigger_display }}</dd></div>
+        <div><dt>Durată</dt><dd>{{ refresh_report.duration_minutes }}m {{ refresh_report.duration_remainder }}s</dd></div>
+        <div><dt>Surse eșuate</dt><dd>{{ original.sources_failed }}</dd></div>
+        <div><dt>Blocări buget</dt><dd>{{ original.events_budget_blocked }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="nf-report-panel">
+      <div class="nf-panel-heading"><div><span class="nf-section-label">COSTURI</span><h2>Consum AI pe operațiuni</h2></div></div>
+      <div class="nf-report-usage">
+        {% for row in refresh_report.usage_rows %}
+          <div class="nf-report-usage-row">
+            <span><b>{{ row.label }}</b><small>{{ row.model }} · {{ row.calls }} apeluri</small></span>
+            <strong>£{{ row.cost_gbp|floatformat:6 }}</strong>
+            <div><i style="width: {{ row.cost_percent }}%"></i></div>
+          </div>
+        {% empty %}<p class="nf-report-empty">Nu a existat consum AI.</p>{% endfor %}
+      </div>
+      <div class="nf-report-token-totals"><span>Input <b>{{ original.input_tokens }}</b></span><span>Output <b>{{ original.output_tokens }}</b></span><span>Total <b>{{ original.input_tokens|add:original.output_tokens }}</b></span></div>
+    </section>
+  </div>
+
+  <section class="nf-report-panel">
+    <div class="nf-panel-heading"><div><span class="nf-section-label">EVENIMENTE</span><h2>Evenimente generate și actualizate</h2></div><span class="nf-report-count">{{ original.events_created }} noi · {{ original.events_updated }} actualizate</span></div>
+    <div class="nf-report-event-list">
+      {% for event in refresh_report.created_events %}
+        <a href="{% url 'admin:news_event_change' event.pk %}"><span class="nf-event-type is-new">NOU</span><span><b>{{ event.title }}</b><small>{{ event.generated_source_count }} surse · {{ event.get_status_display }}</small></span><i data-lucide="arrow-right"></i></a>
+      {% endfor %}
+      {% for event in refresh_report.updated_events %}
+        <a href="{% url 'admin:news_event_change' event.pk %}"><span class="nf-event-type">UPDATE</span><span><b>{{ event.title }}</b><small>{{ event.generated_source_count }} surse · {{ event.get_status_display }}</small></span><i data-lucide="arrow-right"></i></a>
+      {% empty %}{% if not refresh_report.created_events %}<p class="nf-report-empty">Niciun eveniment generat sau actualizat în această rulare.</p>{% endif %}{% endfor %}
+    </div>
+  </section>
+
+  {% if refresh_report.failed_articles or original.note %}
+    <section class="nf-report-panel nf-report-panel--alert">
+      <div class="nf-panel-heading"><div><span class="nf-section-label">DIAGNOSTIC</span><h2>Erori și observații</h2></div><span class="nf-report-count">{{ refresh_report.failed_article_count }} articole</span></div>
+      {% if original.note %}<p class="nf-report-note">{{ original.note }}</p>{% endif %}
+      <div class="nf-report-errors">
+        {% for article in refresh_report.failed_articles %}
+          <article><strong>{{ article.source.name }}</strong><div><b>{{ article.title }}</b><code>{{ article.last_error }}</code></div></article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+</div>
+<script src="{% static 'vendor/lucide/lucide.min.js' %}"></script>
+<script>window.lucide && window.lucide.createIcons();</script>
+{% endblock %}

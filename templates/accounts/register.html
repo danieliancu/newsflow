@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% load i18n %}
+{% block title %}Cont nou · Newsflow{% endblock %}
+{% block content %}
+<section class="panel narrow auth-panel">
+  <div class="auth-heading">
+    <p class="eyebrow">{% translate "Cont nou" %}</p>
+    <h1>{% translate "Creează-ți contul" %}</h1>
+    <p class="auth-subtitle">{% translate "Alege știrile relevante pentru tine și salvează articolele importante." %}</p>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="button auth-submit" type="submit">{% translate "Creează contul" %}</button>
+  </form>
+  <p class="auth-switch">{% translate "Ai deja cont?" %} <a href="{% url 'login' %}">{% translate "Autentifică-te" %}</a>.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,272 @@
+{% extends "admin/base.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'css/admin-dashboard.css' %}?v=4">
+{% endblock %}
+
+{% block content %}
+<div class="nf-dashboard">
+  <header class="nf-hero">
+    <div class="nf-hero-copy">
+      <div class="nf-brand-lockup">
+        <span class="nf-brand-mark">N</span>
+        <span><strong>NEWSFLOW</strong><small>CONTROL CENTER</small></span>
+      </div>
+      <h1>Bun venit în administrare</h1>
+      <span class="nf-hero-accent" aria-hidden="true"></span>
+      <p>O privire de ansamblu asupra conținutului, colectărilor și costurilor AI.</p>
+    </div>
+    <a class="nf-primary-action" href="{% url 'admin:news_article_changelist' %}">
+      Vezi toate articolele <span aria-hidden="true">→</span>
+    </a>
+    <span class="nf-orbit nf-orbit--one" aria-hidden="true"></span>
+    <span class="nf-orbit nf-orbit--two" aria-hidden="true"></span>
+    <span class="nf-orbit nf-orbit--three" aria-hidden="true"></span>
+  </header>
+
+  <section class="nf-run-schedule{% if not automatic_schedule.enabled %} is-paused{% endif %}">
+    <div class="nf-run-status">
+      <span class="nf-run-status-icon" aria-hidden="true"><i></i></span>
+      <div>
+        <span class="nf-section-label">RULARE AUTOMATĂ</span>
+        <strong>{% if automatic_schedule.enabled %}Activă{% else %}În pauză{% endif %}</strong>
+      </div>
+    </div>
+    <div class="nf-run-setting nf-run-setting--violet">
+      <span class="nf-run-setting-icon" aria-hidden="true"><i data-lucide="calendar-days"></i></span>
+      <span><small>Program</small><strong>{{ automatic_schedule.start_hour|stringformat:"02d" }}:00–{{ automatic_schedule.end_hour|stringformat:"02d" }}:00</strong></span>
+    </div>
+    <div class="nf-run-setting nf-run-setting--blue">
+      <span class="nf-run-setting-icon" aria-hidden="true"><i data-lucide="history"></i></span>
+      <span><small>Frecvență</small><strong>{{ automatic_schedule.runs_per_day }} rulări/zi · la {{ automatic_schedule.interval_hours }}h</strong></span>
+    </div>
+    <div class="nf-run-setting nf-run-setting--green">
+      <span class="nf-run-setting-icon" aria-hidden="true"><i data-lucide="wallet"></i></span>
+      <span><small>Buget</small><strong>£{{ event_budget.max_cost_gbp_per_day }}/zi · £{{ event_budget.max_cost_gbp_per_month }}/lună</strong></span>
+    </div>
+    <div class="nf-run-setting nf-run-setting--amber">
+      <span class="nf-run-setting-icon" aria-hidden="true"><i data-lucide="chart-no-axes-combined"></i></span>
+      <span><small>Estimare</small><strong>£0,25–£0,40/zi</strong></span>
+    </div>
+    <a class="nf-run-edit" href="{% url 'admin:news_automaticupdateschedule_changelist' %}"><i data-lucide="settings" aria-hidden="true"></i><span>Setări</span><i class="nf-run-edit-arrow" data-lucide="chevron-right" aria-hidden="true"></i></a>
+  </section>
+
+  <section class="nf-navigation-section">
+    <div class="nf-section-heading">
+      <div>
+        <span class="nf-section-label">ADMINISTRARE</span>
+        <h2>Ce vrei să gestionezi?</h2>
+      </div>
+      <span class="nf-section-hint">Acces rapid la toate zonele importante</span>
+    </div>
+    <div class="nf-admin-cards">
+      <a class="nf-admin-card nf-admin-card--red" href="{% url 'admin:news_article_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true">
+          <i data-lucide="notebook-tabs"></i>
+        </span>
+        <span><strong>Articole</strong><small>Conținut, clasificări și imagini</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--blue" href="{% url 'admin:news_source_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true">
+          <i data-lucide="globe-2"></i>
+        </span>
+        <span><strong>Publicații</strong><small>Surse RSS și starea colectării</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--amber" href="{% url 'admin:news_event_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true"><i data-lucide="calendar-range"></i></span>
+        <span><strong>Evenimente</strong><small>Sinteze, surse și costuri</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--green" href="{% url 'admin:news_eventbudget_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true"><i data-lucide="pound-sterling"></i></span>
+        <span><strong>Buget evenimente</strong><small>Limite zilnice și lunare</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--violet" href="{% url 'admin:news_eventaiusage_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true"><i data-lucide="brain-circuit"></i></span>
+        <span><strong>Consum AI evenimente</strong><small>Apeluri, tokeni și costuri</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--green" href="{% url 'admin:news_refreshrun_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true">
+          <i data-lucide="refresh-cw"></i>
+        </span>
+        <span><strong>Refresh-uri</strong><small>Rulări, rezultate și erori</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--blue" href="{% url 'admin:news_automaticupdateschedule_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true"><i data-lucide="timer-reset"></i></span>
+        <span><strong>Rulare automată</strong><small>Program, frecvență și stare</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--violet" href="{% url 'admin:news_aiusage_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true">
+          <i data-lucide="microchip"></i>
+        </span>
+        <span><strong>Costuri AI</strong><small>Tokeni, modele și costuri GBP</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--amber" href="{% url 'admin:taxonomy_category_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true">
+          <i data-lucide="layout-grid"></i>
+        </span>
+        <span><strong>Taxonomie</strong><small>Categorii, subiecte și reguli</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--cyan" href="{% url 'admin:accounts_user_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true">
+          <i data-lucide="user-round"></i>
+        </span>
+        <span><strong>Utilizatori</strong><small>Conturi, roluri și acces</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--pink" href="{% url 'admin:recommendations_interaction_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true">
+          <i data-lucide="chart-no-axes-combined"></i>
+        </span>
+        <span><strong>Interacțiuni</strong><small>Deschideri, salvări și ascunderi</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+      <a class="nf-admin-card nf-admin-card--dark" href="{% url 'admin:recommendations_recommendation_changelist' %}">
+        <span class="nf-admin-card-icon" aria-hidden="true">
+          <i data-lucide="star"></i>
+        </span>
+        <span><strong>Recomandări</strong><small>Scoruri și personalizare</small></span>
+        <b aria-hidden="true">→</b>
+      </a>
+    </div>
+  </section>
+
+  <div class="nf-primary-metrics">
+    {% for metric in primary_metrics %}
+      <section class="nf-kpi nf-kpi--{{ metric.tone }}">
+        <span class="nf-kpi-icon" aria-hidden="true">
+          {% if metric.tone == "red" %}<i data-lucide="notebook-tabs"></i>{% elif metric.tone == "green" %}<i data-lucide="pound-sterling"></i>{% elif metric.tone == "blue" %}<i data-lucide="refresh-cw"></i>{% else %}<i data-lucide="users"></i>{% endif %}
+        </span>
+        <div>
+          <span class="nf-kpi-label">{{ metric.label }}</span>
+          <strong>{{ metric.value }}</strong>
+          <small>{{ metric.detail }}</small>
+        </div>
+        <svg class="nf-sparkline" viewBox="0 0 160 54" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <path class="nf-sparkline-area" d="M2 50 L2 45 L14 43 L25 37 L36 40 L49 29 L61 32 L73 20 L86 17 L98 26 L111 21 L123 31 L136 24 L148 19 L158 6 L158 50 Z" />
+          <polyline points="2,45 14,43 25,37 36,40 49,29 61,32 73,20 86,17 98,26 111,21 123,31 136,24 148,19 158,6" />
+          <g class="nf-sparkline-points">
+            <circle cx="2" cy="45" r="1.8"/><circle cx="25" cy="37" r="1.8"/><circle cx="49" cy="29" r="1.8"/><circle cx="73" cy="20" r="1.8"/><circle cx="98" cy="26" r="1.8"/><circle cx="123" cy="31" r="1.8"/><circle cx="158" cy="6" r="2.2"/>
+          </g>
+        </svg>
+      </section>
+    {% endfor %}
+  </div>
+
+  <section class="nf-panel nf-panel--wide">
+    <div class="nf-panel-heading">
+      <div>
+        <span class="nf-section-label">ACTIVITATE</span>
+        <h2>Istoric refresh</h2>
+      </div>
+      <a href="{% url 'admin:news_refreshrun_changelist' %}">Vezi toate <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="nf-table-wrap">
+      <table>
+        <thead>
+          <tr><th>Dată</th><th>Status</th><th>Surse</th><th>Articole</th><th>AI calls</th><th>Tokeni</th><th>Cost</th><th>Durată</th></tr>
+        </thead>
+        <tbody>
+        {% for run in recent_refreshes %}
+          <tr>
+            <td><a class="nf-row-link" href="{% url 'admin:news_refreshrun_change' run.pk %}">{{ run.started_at|date:"d M Y, H:i" }}</a></td>
+            <td><span class="nf-status nf-status--{{ run.status }}">{{ run.get_status_display }}</span></td>
+            <td>{{ run.sources_succeeded }} / {{ run.sources_attempted }}</td>
+            <td>{{ run.articles_collected }}</td>
+            <td>{{ run.ai_calls }}</td>
+            <td>{{ run.input_tokens|add:run.output_tokens }}</td>
+            <td class="nf-cost">£{{ run.cost_gbp|floatformat:6 }}</td>
+            <td>{% if run.finished_at %}{{ run.started_at|timesince:run.finished_at }}{% else %}—{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td class="nf-empty" colspan="8">Nu există încă refresh-uri înregistrate.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="nf-content-grid">
+    <section class="nf-panel">
+      <div class="nf-panel-heading">
+        <div><span class="nf-section-label">CONȚINUT</span><h2>Articole pe categorie</h2></div>
+      </div>
+      <div class="nf-ranking">
+        {% for row in articles_by_category %}
+          <div class="nf-rank-row">
+            <div><span>{{ row.name }}</span><strong>{{ row.article_count }}</strong></div>
+            <div class="nf-bar"><span style="width: {{ row.dashboard_percent }}%"></span></div>
+          </div>
+        {% empty %}<p class="nf-empty">Fără date disponibile.</p>{% endfor %}
+      </div>
+    </section>
+
+    <section class="nf-panel">
+      <div class="nf-panel-heading">
+        <div><span class="nf-section-label">PUBLICAȚII</span><h2>Surse principale</h2></div>
+      </div>
+      <div class="nf-ranking">
+        {% for row in articles_by_source %}
+          <div class="nf-rank-row">
+            <div><span>{{ row.name }}</span><strong>{{ row.article_count }}</strong></div>
+            <div class="nf-bar nf-bar--dark"><span style="width: {{ row.dashboard_percent }}%"></span></div>
+          </div>
+        {% empty %}<p class="nf-empty">Fără date disponibile.</p>{% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <div class="nf-bottom-grid">
+    <section class="nf-panel">
+      <span class="nf-section-label">SĂNĂTATEA CONȚINUTULUI</span>
+      <h2>Procesare</h2>
+      <div class="nf-mini-metrics">
+        {% for label, value in content_metrics %}<div><span>{{ label }}</span><strong>{{ value }}</strong></div>{% endfor %}
+      </div>
+    </section>
+    <section class="nf-panel">
+      <span class="nf-section-label">OPERAȚIUNI</span>
+      <h2>Infrastructură și AI</h2>
+      <div class="nf-mini-metrics">
+        {% for label, value in operation_metrics %}<div><span>{{ label }}</span><strong>{{ value }}</strong></div>{% endfor %}
+      </div>
+    </section>
+    <section class="nf-panel">
+      <span class="nf-section-label">AUDIENȚĂ</span>
+      <h2>Interacțiuni</h2>
+      <div class="nf-mini-metrics">
+        {% for label, value in engagement_metrics %}<div><span>{{ label }}</span><strong>{{ value }}</strong></div>{% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <section class="nf-panel">
+    <div class="nf-panel-heading">
+      <div><span class="nf-section-label">COSTURI</span><h2>Consum AI pe model</h2></div>
+      <a href="{% url 'admin:news_aiusage_changelist' %}">Detalii complete <span aria-hidden="true">→</span></a>
+    </div>
+    <div class="nf-table-wrap">
+      <table>
+        <thead><tr><th>Model</th><th>Calcul</th><th>Apeluri</th><th>Tokeni input</th><th>Tokeni output</th><th>Cost GBP</th></tr></thead>
+        <tbody>
+          {% for row in ai_by_model %}
+            <tr><td><strong>{{ row.model }}</strong></td><td>{% if row.is_estimated %}Estimat{% else %}Exact{% endif %}</td><td>{{ row.calls }}</td><td>{{ row.input_tokens }}</td><td>{{ row.output_tokens }}</td><td class="nf-cost">£{{ row.cost_gbp|floatformat:6 }}</td></tr>
+          {% empty %}<tr><td class="nf-empty" colspan="6">Nu există încă utilizare AI înregistrată.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+<script src="{% static 'vendor/lucide/lucide.min.js' %}"></script>
+<script>window.lucide && window.lucide.createIcons();</script>
+{% endblock %}

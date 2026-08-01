@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Link indisponibil" %} · Newsflow{% endblock %}
+{% block content %}
+<section class="panel narrow auth-panel auth-status">
+  <div class="auth-status-icon is-error" aria-hidden="true">
+    <i data-lucide="circle-alert"></i>
+  </div>
+  <div class="auth-heading">
+    <p class="eyebrow">{% translate "Verificare nereușită" %}</p>
+    <h1>{% translate "Link indisponibil" %}</h1>
+    <p class="auth-subtitle">
+      {% translate "Linkul este invalid, a expirat sau a fost deja folosit. Solicită un link nou pentru a continua." %}
+    </p>
+  </div>
+  <a class="button auth-submit auth-button-link" href="{% url 'login' %}">
+    {% translate "Încearcă din nou" %}
+  </a>
+</section>
+{% endblock %}

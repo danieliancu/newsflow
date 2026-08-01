@@ -1,0 +1,43 @@
+from django.urls import path, re_path
+
+from . import views
+
+urlpatterns = [
+    path("", views.feed, name="feed"),
+    path("category/<slug:slug>/", views.category_archive, name="category_archive"),
+    path("categorie/<slug:slug>/", views.legacy_category_archive, name="legacy_category_archive"),
+    path("source/<slug:slug>/", views.source_archive, name="source_archive"),
+    path("topic/<slug:slug>/", views.topic_archive, name="topic_archive"),
+    path("evenimente/", views.events_archive, name="events_archive"),
+    re_path(
+        r"^eveniment/(?P<slug>[-a-zA-Z0-9_]+)-(?P<event_id>\d+)/$",
+        views.legacy_event_detail,
+        name="legacy_event_detail",
+    ),
+    path("eveniment/<slug:slug>/", views.event_detail, name="event_detail"),
+    path("search/", views.search_results, name="search_results"),
+    path("about/", views.technical_page, {"page_slug": "about"}, name="about"),
+    path("terms/", views.technical_page, {"page_slug": "terms"}, name="terms"),
+    path("privacy/", views.technical_page, {"page_slug": "privacy"}, name="privacy"),
+    path("cookies/", views.technical_page, {"page_slug": "cookies"}, name="cookies"),
+    path("contact/", views.technical_page, {"page_slug": "contact"}, name="contact"),
+    path("sitemap.xml", views.sitemap, name="sitemap"),
+    path("news-sitemap.xml", views.news_sitemap, name="news_sitemap"),
+    path("robots.txt", views.robots_txt, name="robots_txt"),
+    path("refresh/", views.refresh_news_background, name="refresh_news"),
+    path("refresh/<int:refresh_run_id>/status/", views.refresh_status, name="refresh_status"),
+    path("interactions/shown/", views.track_shown_articles, name="track_shown_articles"),
+    path("saved/", views.saved_news, name="saved_news"),
+    path("recently-read/", views.recently_read, name="recently_read"),
+    path("hidden/", views.hidden_content, name="hidden_content"),
+    path("article/<int:article_id>/open/", views.open_article, name="open_article"),
+    path("article/<int:article_id>/save/", views.toggle_saved, name="toggle_saved"),
+    path("article/<int:article_id>/hide/", views.hide_article, name="hide_article"),
+    path("article/<int:article_id>/restore/", views.restore_article, name="restore_article"),
+    path("source/<int:source_id>/restore/", views.restore_source, name="restore_source"),
+    path("account/display-mode/", views.set_display_mode, name="set_display_mode"),
+    path("sursa/<slug:slug>/", views.legacy_source_archive, name="legacy_source_archive"),
+    path("subiect/<slug:slug>/", views.legacy_topic_archive, name="legacy_topic_archive"),
+    path("cautare/", views.legacy_search_results, name="legacy_search_results"),
+    path("salvate/", views.legacy_saved_news, name="legacy_saved_news"),
+]

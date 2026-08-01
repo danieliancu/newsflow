@@ -1,0 +1,263 @@
+{% load static i18n %}
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
+  <title>{% block title %}Newsflow{% endblock %}</title>
+  {% block meta_description %}<meta name="description" content="Cele mai recente știri din România, organizate pe categorii și publicații.">{% endblock %}
+  {% block robots %}<meta name="robots" content="{{ robots_value|default:'index,follow' }}">{% endblock %}
+  {% if canonical_url %}<link rel="canonical" href="{{ canonical_url }}">{% endif %}
+  {% if og_title %}<meta property="og:title" content="{{ og_title }}">{% endif %}
+  {% if og_description %}<meta property="og:description" content="{{ og_description }}">{% endif %}
+  {% if canonical_url %}<meta property="og:url" content="{{ canonical_url }}">{% endif %}
+  <meta property="og:site_name" content="Newsflow">
+  <meta property="og:type" content="{% if request.resolver_match.url_name == 'event_detail' %}article{% else %}website{% endif %}">
+  {% if og_image %}<meta property="og:image" content="{{ og_image }}">{% endif %}
+  {% if og_title %}<meta name="twitter:title" content="{{ og_title }}">{% endif %}
+  {% if og_description %}<meta name="twitter:description" content="{{ og_description }}">{% endif %}
+  {% if og_image %}<meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="{{ og_image }}">{% endif %}
+  {% if structured_data %}<script type="application/ld+json">{{ structured_data|safe }}</script>{% endif %}
+  <script>
+    window.newsflowRetryImage = (image) => {
+      const attempt = Number(image.dataset.imageRetry || 0);
+      if (attempt < 2) {
+        const originalSource = image.dataset.originalSource || image.currentSrc || image.src;
+        image.dataset.originalSource = originalSource;
+        image.dataset.imageRetry = String(attempt + 1);
+        window.setTimeout(() => {
+          const retryUrl = new URL(originalSource, window.location.href);
+          retryUrl.searchParams.set("_newsflow_retry", String(attempt + 1));
+          image.src = retryUrl.href;
+        }, 500 * (attempt + 1));
+        return;
+      }
+      const removalTarget = image.dataset.imageRemove;
+      if (removalTarget === "parent") image.parentElement?.remove();
+      else if (removalTarget) image.closest(removalTarget)?.remove();
+      else image.remove();
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/newsflow.css' %}?v=3">
+</head>
+<body>
+  <div class="site-navigation-shell">
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand" href="{% url 'feed' %}">
+        <img src="{% static 'favicon.svg' %}" alt="" width="30" height="30">
+        <span>Newsflow</span>
+      </a>
+      <form class="header-search" method="get" action="{% url 'search_results' %}" role="search">
+        <label class="sr-only" for="header-search-input">{% translate "Caută știri" %}</label>
+        <i data-lucide="search" aria-hidden="true"></i>
+        <input
+          id="header-search-input"
+          type="search"
+          name="q"
+          value="{{ request.GET.q|default:'' }}"
+          placeholder="{% translate 'Caută știri sau nume' %}"
+          autocomplete="off"
+        >
+        <button class="sr-only" type="submit">{% translate "Caută" %}</button>
+      </form>
+      <nav class="account-navigation">
+        <span class="news-update-status"{% if latest_news_refresh %} title="{% blocktranslate with refreshed_at=latest_news_refresh|date:'d.m.Y H:i' %}Ultima actualizare: {{ refreshed_at }}{% endblocktranslate %}"{% endif %}>
+          <span class="news-update-status-dot{% if running_refresh %} is-running{% endif %}" aria-hidden="true"></span>
+          <span class="news-update-status-label">
+            {% if running_refresh %}
+              {% translate "Se actualizează…" %}
+            {% elif latest_news_refresh %}
+              {% translate "Actualizat" %} {{ latest_news_refresh|date:"H:i" }}
+            {% else %}
+              {% translate "Actualizare automată" %}
+            {% endif %}
+          </span>
+          <i class="news-update-status-icon{% if running_refresh %} is-running{% endif %}" data-lucide="refresh-cw" aria-hidden="true"></i>
+          {% if latest_news_refresh %}<time class="news-update-status-time" datetime="{{ latest_news_refresh|date:'c' }}">{{ latest_news_refresh|date:"H:i" }}</time>{% endif %}
+        </span>
+        {% if user.is_authenticated %}
+          <a class="account-icon-link saved-icon-link" href="{% url 'account_dashboard' %}" aria-label="{% translate 'Contul meu' %}" title="{% translate 'Contul meu' %}">
+            <i data-lucide="user-round" aria-hidden="true"></i>
+            <span class="account-icon-badge" aria-label="{% blocktranslate with count=saved_news_count %}{{ count }} știri salvate{% endblocktranslate %}">{{ saved_news_count }}</span>
+          </a>
+          {% if user.is_staff %}
+            <a class="account-icon-link" href="{% url 'admin:index' %}" aria-label="{% translate 'Administrare' %}" title="{% translate 'Administrare' %}">
+              <i data-lucide="shield-check" aria-hidden="true"></i>
+            </a>
+          {% endif %}
+          <form action="{% url 'logout' %}" method="post" class="inline-form">
+            {% csrf_token %}
+            <button class="account-icon-link account-icon-button" type="submit" aria-label="{% translate 'Ieșire' %}" title="{% translate 'Ieșire' %}">
+              <i data-lucide="log-out" aria-hidden="true"></i>
+            </button>
+          </form>
+        {% else %}
+          <a class="account-icon-link" href="{% url 'login' %}" aria-label="{% translate 'Autentificare' %}" title="{% translate 'Autentificare' %}">
+            <i data-lucide="log-in" aria-hidden="true"></i>
+          </a>
+          <a class="account-icon-link is-primary" href="{% url 'register' %}" aria-label="{% translate 'Cont nou' %}" title="{% translate 'Cont nou' %}">
+            <i data-lucide="user-plus" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+  <nav class="category-menu" aria-label="{% translate 'Categorii de știri' %}">
+    <div class="category-menu-inner">
+      <a
+        class="events-navigation-link"
+        href="{% url 'events_archive' %}"
+        {% if request.resolver_match.url_name == 'events_archive' or request.resolver_match.url_name == 'event_detail' %}aria-current="page"{% endif %}
+      ><span class="live-dot menu-live-dot" aria-hidden="true"></span><span class="events-navigation-label">{% translate "Subiectele zilei" %}</span></a>
+      {% for category in navigation_categories %}
+        <a
+          href="{% url 'category_archive' category.slug %}"
+          {% if request.resolver_match.url_name == 'category_archive' and request.resolver_match.kwargs.slug == category.slug %}aria-current="page"{% endif %}
+        >{{ category.name }}</a>
+      {% endfor %}
+    </div>
+  </nav>
+  </div>
+  <main class="page">
+    {% for message in messages %}
+      {% if request.resolver_match.url_name != 'feed' %}
+        <div class="message {{ message.tags }}">{{ message }}</div>
+      {% endif %}
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer"{% if request.resolver_match.url_name == 'feed' %} data-with-mobile-filter{% endif %}>
+    <div class="site-footer-inner">
+      <a class="footer-brand" href="{% url 'feed' %}">
+        <img src="{% static 'favicon.svg' %}" alt="" width="26" height="26">
+        <span>Newsflow</span>
+      </a>
+      <nav class="footer-navigation" aria-label="{% translate 'Informații despre site' %}">
+        <a href="{% url 'about' %}">{% translate "Despre" %}</a>
+        <a href="{% url 'terms' %}">{% translate "Termeni" %}</a>
+        <a href="{% url 'privacy' %}">{% translate "Confidențialitate" %}</a>
+        <a href="{% url 'cookies' %}">{% translate "Cookie-uri" %}</a>
+        <a href="{% url 'contact' %}">{% translate "Contact" %}</a>
+      </nav>
+      <span class="footer-copyright">© {% now "Y" %} Newsflow</span>
+    </div>
+  </footer>
+  <div class="action-toast" data-action-toast hidden>
+    <span data-toast-message></span>
+    <button type="button" data-toast-undo hidden>{% translate "Anulează" %}</button>
+  </div>
+  <script src="{% static 'vendor/lucide/lucide.min.js' %}"></script>
+  <script>
+    lucide.createIcons();
+    document.addEventListener("submit", async (event) => {
+      const form = event.target.closest("[data-story-action]");
+      if (!form || !window.fetch) return;
+      event.preventDefault();
+      const card = form.closest(".story");
+      const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]")?.value;
+      try {
+        const response = await fetch(form.action, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {"Accept": "application/json", "X-CSRFToken": csrfToken},
+        });
+        if (!response.ok) throw new Error("Request failed");
+        const data = await response.json();
+        if (form.dataset.storyAction === "save") {
+          const button = form.querySelector("button");
+          button.classList.toggle("is-active", data.saved);
+          const badge = document.querySelector(".account-icon-badge");
+          if (badge) badge.textContent = data.saved_count;
+          if (!data.saved && form.dataset.removeOnUnsave === "true") card.remove();
+        }
+        if (form.dataset.storyAction === "hide") {
+          card.hidden = true;
+          const toast = document.querySelector("[data-action-toast]");
+          const undo = toast.querySelector("[data-toast-undo]");
+          toast.querySelector("[data-toast-message]").textContent = "{% translate 'Știrea a fost ascunsă.' %}";
+          undo.hidden = false;
+          toast.hidden = false;
+          undo.onclick = async () => {
+            const undoResponse = await fetch(data.undo_url, {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {"Accept": "application/json", "X-CSRFToken": csrfToken},
+            });
+            if (undoResponse.ok) card.hidden = false;
+            toast.hidden = true;
+          };
+          window.setTimeout(() => { toast.hidden = true; }, 7000);
+        }
+      } catch (error) {
+        form.submit();
+      }
+    });
+    const shareModal = document.querySelector("[data-share-modal]");
+    let activeShareData = null;
+    const closeShareModal = () => {
+      if (!shareModal) return;
+      shareModal.hidden = true;
+      document.body.classList.remove("has-share-modal");
+    };
+    const copyShareUrl = async () => {
+      if (!activeShareData) return;
+      try {
+        if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(activeShareData.url);
+        else {
+          const input = document.createElement("textarea");
+          input.value = activeShareData.url;
+          input.style.position = "fixed";
+          input.style.opacity = "0";
+          document.body.appendChild(input);
+          input.select();
+          document.execCommand("copy");
+          input.remove();
+        }
+        closeShareModal();
+        const toast = document.querySelector("[data-action-toast]");
+        toast.querySelector("[data-toast-message]").textContent = "{% translate 'Link copiat.' %}";
+        toast.querySelector("[data-toast-undo]").hidden = true;
+        toast.hidden = false;
+        window.setTimeout(() => { toast.hidden = true; }, 3500);
+      } catch (error) {
+        window.prompt("{% translate 'Copiază linkul:' %}", activeShareData.url);
+      }
+    };
+    document.addEventListener("click", async (event) => {
+      const opener = event.target.closest("[data-share-modal-open]");
+      if (opener && shareModal) {
+        activeShareData = {title: opener.dataset.shareTitle, url: opener.dataset.shareUrl || window.location.href};
+        const title = encodeURIComponent(activeShareData.title);
+        const url = encodeURIComponent(activeShareData.url);
+        const textAndUrl = encodeURIComponent(`${activeShareData.title} ${activeShareData.url}`);
+        shareModal.querySelector('[data-share-channel="whatsapp"]').href = `https://wa.me/?text=${textAndUrl}`;
+        shareModal.querySelector('[data-share-channel="messenger"]').href = `fb-messenger://share/?link=${url}`;
+        shareModal.querySelector('[data-share-channel="facebook"]').href = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        shareModal.querySelector('[data-share-channel="x"]').href = `https://twitter.com/intent/tweet?text=${title}&url=${url}`;
+        shareModal.querySelector('[data-share-channel="linkedin"]').href = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+        shareModal.querySelector('[data-share-channel="email"]').href = `mailto:?subject=${title}&body=${textAndUrl}`;
+        const nativeOption = shareModal.querySelector("[data-share-native]");
+        nativeOption.hidden = !navigator.share;
+        shareModal.hidden = false;
+        document.body.classList.add("has-share-modal");
+        shareModal.querySelector("[data-share-modal-close]").focus();
+        return;
+      }
+      if (event.target.closest("[data-share-modal-close]")) closeShareModal();
+      if (event.target.closest("[data-share-copy]")) await copyShareUrl();
+      if (event.target.closest("[data-share-native]") && activeShareData && navigator.share) {
+        try { await navigator.share(activeShareData); closeShareModal(); }
+        catch (error) { if (error.name !== "AbortError") await copyShareUrl(); }
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && shareModal && !shareModal.hidden) closeShareModal();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% block title %}Știri salvate · Newsflow{% endblock %}
+{% block content %}
+<header class="intro saved-intro">
+  <p class="eyebrow">{% translate "Colecția ta" %}</p>
+  <h1>{% translate "Știri salvate" %}</h1>
+  <p>{% blocktranslate count counter=saved_news_count %}{{ counter }} articol păstrat pentru mai târziu.{% plural %}{{ counter }} articole păstrate pentru mai târziu.{% endblocktranslate %}</p>
+</header>
+<div class="feed saved-feed">
+  {% for article in articles %}
+    {% include "recommendations/_story_card.html" with saved_page=True %}
+  {% empty %}
+    <section class="empty">
+      <h2>{% translate "Nu ai știri salvate." %}</h2>
+      <p>{% translate "Folosește butonul „Salvează” din flux și le vei găsi aici." %}</p>
+      <a class="button small" href="{% url 'feed' %}">{% translate "Înapoi la știri" %}</a>
+    </section>
+  {% endfor %}
+</div>
+{% endblock %}

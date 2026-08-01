@@ -1,0 +1,83 @@
+{% load i18n %}
+<article class="story" data-article-id="{{ article.id }}">
+  {% if article.image_url %}
+    <a
+      class="story-image"
+      href="{% if user.is_authenticated %}{% url 'open_article' article.id %}{% else %}{{ article.canonical_url }}{% endif %}"
+      target="_blank"
+      rel="noopener"
+      aria-label="{% translate 'Deschide articolul original într-un tab nou' %}"
+    >
+      <img
+        src="{{ article.image_url }}"
+        alt=""
+        loading="lazy"
+        decoding="async"
+        referrerpolicy="no-referrer"
+        data-image-remove="parent"
+        onerror="window.newsflowRetryImage(this)"
+      >
+    </a>
+  {% endif %}
+  {% with article_date=article.published_at|default:article.collected_at %}
+  <div class="story-meta">
+    <span><a href="{% url 'source_archive' article.source.slug %}">{{ article.source.name }}</a></span>
+    <span class="story-meta-separator" aria-hidden="true">•</span>
+    <span>{{ article_date|date:"d.m.Y" }}</span>
+    <span class="story-meta-separator" aria-hidden="true">•</span>
+    <span>{{ article_date|date:"H:i" }}</span>
+  </div>
+  {% endwith %}
+  {% if user.is_authenticated and article.feed_reason %}
+    <p class="recommendation-reason">
+      {% if article.feed_reason.type == "source" %}{% translate "Pentru că urmărești" %} {{ article.feed_reason.name }}
+      {% elif article.feed_reason.type == "category" %}{% translate "Din categoria urmărită" %} {{ article.feed_reason.name }}
+      {% elif article.feed_reason.type == "topic" %}{% translate "Subiect urmărit:" %} {{ article.feed_reason.name }}
+      {% elif article.feed_reason.type == "term" %}{% translate "Termeni urmăriți:" %} {{ article.feed_reason.name }}
+      {% endif %}
+    </p>
+  {% endif %}
+  {% if article.public_event %}
+    <a class="story-event-link" href="{% url 'event_detail' article.public_event.slug %}">
+      <i data-lucide="layers-3" aria-hidden="true"></i>
+      <span>
+        {% translate "Subiect din" %} {{ article.public_event.generated_source_count }} {% translate "surse" %}:
+        <strong>{{ article.public_event.title }}</strong>
+      </span>
+    </a>
+  {% endif %}
+  <h2>{{ article.title }}</h2>
+  {% if article.first_paragraph %}<p class="lead">{{ article.first_paragraph }}</p>{% endif %}
+  <footer class="story-footer">
+    <div class="story-tags">
+      {% if article.primary_category %}<a href="{% url 'category_archive' article.primary_category.slug %}">{{ article.primary_category.name }}</a>{% endif %}
+      {% for match in article.topic_matches.all %}<a href="{% url 'topic_archive' match.topic.slug %}">{{ match.topic.name }}</a>{% endfor %}
+    </div>
+    <div class="story-actions">
+      {% if user.is_authenticated %}
+        <form method="post" action="{% url 'toggle_saved' article.id %}" data-story-action="save"{% if saved_page %} data-remove-on-unsave="true"{% endif %}>
+          {% csrf_token %}
+          {% if saved_page %}<input type="hidden" name="next" value="saved">{% endif %}
+          <button class="icon-button{% if saved_page or article.id in saved_ids %} is-active{% endif %}" type="submit" aria-label="{% if saved_page or article.id in saved_ids %}{% translate 'Elimină salvarea' %}{% else %}{% translate 'Salvează' %}{% endif %}" title="{% if saved_page or article.id in saved_ids %}{% translate 'Elimină salvarea' %}{% else %}{% translate 'Salvează' %}{% endif %}">
+            <i data-lucide="bookmark" aria-hidden="true"></i>
+          </button>
+        </form>
+        {% if not saved_page %}
+          <form method="post" action="{% url 'hide_article' article.id %}" data-story-action="hide">
+            {% csrf_token %}
+            <button class="icon-button" type="submit" aria-label="{% translate 'Ascunde' %}" title="{% translate 'Ascunde' %}">
+              <i data-lucide="eye-off" aria-hidden="true"></i>
+            </button>
+          </form>
+        {% endif %}
+        <a class="icon-button" href="{% url 'open_article' article.id %}" target="_blank" rel="noopener" aria-label="{% translate 'Deschide articolul original într-un tab nou' %}" title="{% translate 'Deschide articolul original într-un tab nou' %}">
+          <i data-lucide="external-link" aria-hidden="true"></i>
+        </a>
+      {% else %}
+        <a class="icon-button" href="{{ article.canonical_url }}" target="_blank" rel="noopener" aria-label="{% translate 'Deschide articolul original într-un tab nou' %}" title="{% translate 'Deschide articolul original într-un tab nou' %}">
+          <i data-lucide="external-link" aria-hidden="true"></i>
+        </a>
+      {% endif %}
+    </div>
+  </footer>
+</article>

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ event.title }} · Newsflow{% endblock %}
+{% block meta_description %}<meta name="description" content="{{ og_description }}">{% endblock %}
+
+{% block content %}
+<div class="event-detail-layout">
+  <article class="event-page">
+    <header class="archive-heading event-detail-heading">
+      <nav class="breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+        <a href="{% url 'feed' %}">Newsflow</a>
+        <span aria-hidden="true">/</span>
+        <a href="{% url 'events_archive' %}">{% translate "Subiecte" %}</a>
+      </nav>
+      <h1>{{ event.title }}</h1>
+      <p class="event-detail-meta">
+        {% translate "De" %} <a href="{% url 'about' %}">{% translate "Redacția Newsflow" %}</a> ·
+        {% translate "Publicat" %}
+        <time datetime="{{ event.first_generated_at|date:'c' }}">{{ event.first_generated_at|date:"j F Y, H:i" }}</time> ·
+        {% translate "Actualizat" %}
+        <time datetime="{{ event.last_generated_at|date:'c' }}">{{ event.last_generated_at|date:"j F Y, H:i" }}</time> ·
+        {% translate "Sinteză bazată pe" %}
+        {{ event.generated_source_count }} {% translate "surse distincte" %}.
+      </p>
+      {% if not event.representative_image_url %}
+        <button class="event-share-button" type="button" data-share-modal-open data-share-title="{{ event.title }}" data-share-url="{{ canonical_url }}">
+          <i data-lucide="share-2" aria-hidden="true"></i><span>{% translate "Distribuie" %}</span>
+        </button>
+      {% endif %}
+    </header>
+
+    {% if event.representative_image_url %}
+      <div class="event-hero-media">
+        <img class="event-hero-image" src="{{ event.representative_image_url }}" alt="{% blocktranslate with title=event.title %}Imagine asociată subiectului: {{ title }}{% endblocktranslate %}" loading="eager" fetchpriority="high" decoding="async" referrerpolicy="no-referrer" data-image-remove=".event-hero-media" onerror="window.newsflowRetryImage(this)">
+        <button class="event-share-button event-share-button--overlay" type="button" data-share-modal-open data-share-title="{{ event.title }}" data-share-url="{{ canonical_url }}">
+          <i data-lucide="share-2" aria-hidden="true"></i><span>{% translate "Distribuie" %}</span>
+        </button>
+      </div>
+    {% endif %}
+
+    <section class="event-summary">
+      {{ event.summary|linebreaks }}
+    </section>
+
+    {% if event.confirmed_facts %}
+      <section class="event-content-section">
+        <h2 class="event-section-title"><span class="event-section-icon"><i data-lucide="badge-check" aria-hidden="true"></i></span>{% translate "Ce este confirmat" %}</h2>
+        <ul>{% for fact in event.confirmed_facts %}<li>{{ fact.text }}</li>{% endfor %}</ul>
+      </section>
+    {% endif %}
+
+    {% if event.differences %}
+      <section class="event-content-section">
+        <h2 class="event-section-title"><span class="event-section-icon"><i data-lucide="git-compare-arrows" aria-hidden="true"></i></span>{% translate "Ce diferă între surse" %}</h2>
+        <ul>{% for difference in event.differences %}<li>{{ difference }}</li>{% endfor %}</ul>
+      </section>
+    {% endif %}
+
+    {% if event.timeline %}
+      <section class="event-content-section">
+        <h2 class="event-section-title"><span class="event-section-icon"><i data-lucide="history" aria-hidden="true"></i></span>{% translate "Cronologie" %}</h2>
+        <ul>{% for item in event_timeline %}<li><strong>{{ item.display_date }}</strong> — {{ item.text }}</li>{% endfor %}</ul>
+      </section>
+    {% endif %}
+
+    <section class="event-content-section event-original-reports">
+      <h2 class="event-section-title"><span class="event-section-icon"><i data-lucide="newspaper" aria-hidden="true"></i></span>{% translate "Relatări originale" %}</h2>
+      <ul class="event-original-list">
+        {% for article in articles %}
+          <li>
+            <a href="{{ article.canonical_url }}" target="_blank" rel="noopener" aria-label="{% translate 'Deschide articolul original într-un tab nou' %}">
+              {{ article.title }} <i data-lucide="external-link" aria-hidden="true"></i>
+            </a>
+            <span>{{ article.source.name }} · {{ article.published_at|default:article.collected_at|date:"d M Y, H:i" }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    {% if previous_event or next_event %}
+      <nav class="event-pagination" aria-label="{% translate 'Navigare între subiecte' %}">
+        {% if previous_event %}
+          <a class="event-pagination-link event-pagination-link--previous" href="{% url 'event_detail' previous_event.slug %}">
+            <i data-lucide="arrow-left" aria-hidden="true"></i>
+            <span><small>{% translate "Știrea precedentă" %}</small><strong>{{ previous_event.title }}</strong></span>
+          </a>
+        {% else %}<span></span>{% endif %}
+        {% if next_event %}
+          <a class="event-pagination-link event-pagination-link--next" href="{% url 'event_detail' next_event.slug %}">
+            <span><small>{% translate "Următoarea știre" %}</small><strong>{{ next_event.title }}</strong></span>
+            <i data-lucide="arrow-right" aria-hidden="true"></i>
+          </a>
+        {% endif %}
+      </nav>
+    {% endif %}
+  </article>
+
+  <aside class="event-source-sidebar" aria-labelledby="event-sources-title">
+    <h2 class="event-section-title" id="event-sources-title"><span class="event-section-icon"><i data-lucide="layout-grid" aria-hidden="true"></i></span>{% translate "Din aceeași categorie" %}</h2>
+    <div class="event-source-list">
+      {% for related_event in related_events %}
+        <article class="event-source-card{% if not related_event.representative_image_url %} event-source-card--no-image{% endif %}">
+          {% if related_event.representative_image_url %}
+            <a class="event-source-image" href="{% url 'event_detail' related_event.slug %}" aria-label="{{ related_event.title }}">
+              <img src="{{ related_event.representative_image_url }}" alt="{{ related_event.title }}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-image-remove="parent" onerror="window.newsflowRetryImage(this)">
+            </a>
+          {% endif %}
+          <a class="event-source-title" href="{% url 'event_detail' related_event.slug %}">{{ related_event.title }}</a>
+        </article>
+      {% empty %}
+        <p class="muted event-related-empty">{% translate "Nu există încă alte subiecte publice." %}</p>
+      {% endfor %}
+    </div>
+  </aside>
+</div>
+
+<div class="share-modal" data-share-modal hidden>
+  <button class="share-modal-backdrop" type="button" data-share-modal-close aria-label="{% translate 'Închide fereastra de distribuire' %}"></button>
+  <section class="share-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+    <header class="share-modal-header">
+      <div>
+        <span class="eyebrow">Newsflow</span>
+        <h2 id="share-modal-title">{% translate "Distribuie subiectul" %}</h2>
+      </div>
+      <button class="share-modal-close" type="button" data-share-modal-close aria-label="{% translate 'Închide' %}"><i data-lucide="x" aria-hidden="true"></i></button>
+    </header>
+    <div class="share-modal-options">
+      <button class="share-modal-option" type="button" data-share-native>
+        <span class="share-option-icon"><i data-lucide="share-2" aria-hidden="true"></i></span><span>{% translate "Mai multe" %}</span>
+      </button>
+      <a class="share-modal-option" href="#" data-share-channel="whatsapp" target="_blank" rel="noopener">
+        <span class="share-option-icon"><i data-lucide="message-circle" aria-hidden="true"></i></span><span>WhatsApp</span>
+      </a>
+      <a class="share-modal-option" href="#" data-share-channel="messenger">
+        <span class="share-option-icon"><i data-lucide="messages-square" aria-hidden="true"></i></span><span>Messenger</span>
+      </a>
+      <a class="share-modal-option" href="#" data-share-channel="facebook" target="_blank" rel="noopener">
+        <span class="share-option-icon"><i data-lucide="thumbs-up" aria-hidden="true"></i></span><span>Facebook</span>
+      </a>
+      <a class="share-modal-option" href="#" data-share-channel="x" target="_blank" rel="noopener">
+        <span class="share-option-icon"><i data-lucide="at-sign" aria-hidden="true"></i></span><span>X</span>
+      </a>
+      <a class="share-modal-option" href="#" data-share-channel="linkedin" target="_blank" rel="noopener">
+        <span class="share-option-icon"><i data-lucide="briefcase-business" aria-hidden="true"></i></span><span>LinkedIn</span>
+      </a>
+      <a class="share-modal-option" href="#" data-share-channel="email">
+        <span class="share-option-icon"><i data-lucide="mail" aria-hidden="true"></i></span><span>{% translate "E-mail" %}</span>
+      </a>
+      <button class="share-modal-option" type="button" data-share-copy>
+        <span class="share-option-icon"><i data-lucide="link" aria-hidden="true"></i></span><span>{% translate "Copiază linkul" %}</span>
+      </button>
+    </div>
+  </section>
+</div>
+{% endblock %}

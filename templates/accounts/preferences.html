@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% load i18n %}
+{% block title %}Preferințe · Newsflow{% endblock %}
+{% block content %}
+<header class="intro saved-intro">
+  <p class="eyebrow">{% translate "Personalizare" %}</p>
+  <h1>{% translate "Alege ce contează pentru tine" %}</h1>
+</header>
+<section class="panel narrow">
+  {% include "accounts/_preference_form.html" %}
+</section>
+{% endblock %}

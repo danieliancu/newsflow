@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% block title %}{% translate "Șterge contul" %} · Newsflow{% endblock %}
+
+{% block content %}
+<section class="panel narrow auth-panel delete-account-panel">
+  <div class="auth-heading">
+    <p class="eyebrow">{% translate "ZONĂ SENSIBILĂ" %}</p>
+    <h1>{% translate "Șterge contul" %}</h1>
+    <p class="auth-subtitle">{% translate "Preferințele, salvările și istoricul tău vor fi șterse definitiv. Această acțiune nu poate fi anulată." %}</p>
+  </div>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button class="button auth-submit delete-account-submit" type="submit">{% translate "Șterge definitiv contul" %}</button>
+  </form>
+  <p class="auth-switch"><a href="{% url 'account_dashboard' %}">{% translate "Renunță și revino la cont" %}</a></p>
+</section>
+{% endblock %}

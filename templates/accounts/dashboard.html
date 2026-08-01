@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% block title %}{% translate "Contul meu" %} · Newsflow{% endblock %}
+
+{% block content %}
+<div class="account-dashboard">
+  <header class="account-dashboard-heading">
+    <p class="eyebrow">{% translate "CONTUL MEU" %}</p>
+    <h1>{% translate "Spațiul tău Newsflow" %}</h1>
+    <p>{{ user.email }}</p>
+  </header>
+
+  <div class="account-menu-grid">
+    <a class="account-menu-card" href="{% url 'preferences' %}">
+      <span class="account-menu-icon" aria-hidden="true">
+        <i data-lucide="sliders-horizontal"></i>
+      </span>
+      <span class="account-menu-copy">
+        <strong>{% translate "Preferințe" %}</strong>
+        <small>
+          {% blocktranslate count counter=preferred_sources_count %}
+            {{ counter }} publicație selectată
+          {% plural %}
+            {{ counter }} publicații selectate
+          {% endblocktranslate %}
+        </small>
+        <span>{% translate "Vezi și schimbă preferințele" %}</span>
+      </span>
+      <i class="account-menu-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+    </a>
+
+    <a class="account-menu-card account-menu-card--saved" href="{% url 'saved_news' %}">
+      <span class="account-menu-icon" aria-hidden="true">
+        <i data-lucide="bookmark"></i>
+      </span>
+      <span class="account-menu-copy">
+        <strong>{% translate "Știri salvate" %}</strong>
+        <small>
+          {% blocktranslate count counter=saved_count %}
+            {{ counter }} articol salvat
+          {% plural %}
+            {{ counter }} articole salvate
+          {% endblocktranslate %}
+        </small>
+        <span>{% translate "Vezi și gestionează știrile salvate" %}</span>
+      </span>
+      <i class="account-menu-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+    </a>
+
+    <a class="account-menu-card" href="{% url 'recently_read' %}">
+      <span class="account-menu-icon" aria-hidden="true"><i data-lucide="history"></i></span>
+      <span class="account-menu-copy">
+        <strong>{% translate "Citite recent" %}</strong>
+        <small>{% blocktranslate count counter=recent_count %}{{ counter }} articol{% plural %}{{ counter }} articole{% endblocktranslate %}</small>
+        <span>{% translate "Revino la știrile deschise recent" %}</span>
+      </span>
+      <i class="account-menu-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+    </a>
+
+    <a class="account-menu-card" href="{% url 'hidden_content' %}">
+      <span class="account-menu-icon" aria-hidden="true"><i data-lucide="eye-off"></i></span>
+      <span class="account-menu-copy">
+        <strong>{% translate "Conținut ascuns" %}</strong>
+        <small>{% blocktranslate count counter=hidden_count %}{{ counter }} element{% plural %}{{ counter }} elemente{% endblocktranslate %}</small>
+        <span>{% translate "Restaurează știri și publicații" %}</span>
+      </span>
+      <i class="account-menu-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+    </a>
+
+    <a class="account-menu-card account-menu-card--password" href="{% url 'change_password' %}">
+      <span class="account-menu-icon" aria-hidden="true">
+        <i data-lucide="key-round"></i>
+      </span>
+      <span class="account-menu-copy">
+        <strong>{% translate "Schimbă parola" %}</strong>
+        <small>{% translate "Securitatea contului" %}</small>
+        <span>{% translate "Actualizează parola de autentificare" %}</span>
+      </span>
+      <i class="account-menu-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+    </a>
+
+    <a class="account-menu-card account-menu-card--danger" href="{% url 'delete_account' %}">
+      <span class="account-menu-icon" aria-hidden="true">
+        <i data-lucide="trash-2"></i>
+      </span>
+      <span class="account-menu-copy">
+        <strong>{% translate "Șterge contul" %}</strong>
+        <small>{% translate "Acțiune definitivă" %}</small>
+        <span>{% translate "Șterge profilul și datele asociate" %}</span>
+      </span>
+      <i class="account-menu-arrow" data-lucide="arrow-right" aria-hidden="true"></i>
+    </a>
+  </div>
+  <section class="display-mode-panel">
+    <div>
+      <strong>{% translate "Aspectul fluxului" %}</strong>
+      <span>{% translate "Alege cât de dens să fie afișate știrile." %}</span>
+    </div>
+    <form method="post" action="{% url 'set_display_mode' %}">
+      {% csrf_token %}
+      <button type="submit" name="mode" value="cards" {% if user.feed_display_mode == "cards" %}class="is-active"{% endif %}>{% translate "Carduri" %}</button>
+      <button type="submit" name="mode" value="compact" {% if user.feed_display_mode == "compact" %}class="is-active"{% endif %}>{% translate "Compact" %}</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

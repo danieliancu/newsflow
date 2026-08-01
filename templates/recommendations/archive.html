@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ archive_title }}{% endblock %}
+{% block meta_description %}<meta name="description" content="{{ archive_description }}">{% endblock %}
+{% block content %}
+<header class="archive-heading">
+  <nav class="breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+    <a href="{% url 'feed' %}">Newsflow</a>
+    <span aria-hidden="true">/</span>
+    <span>{{ archive_entity.name }}</span>
+  </nav>
+  <h1>{{ archive_entity.name }}</h1>
+  <p>{{ archive_description }}</p>
+  <div class="archive-count">{{ page_obj.paginator.count }} {% translate "articole" %}</div>
+</header>
+
+<div class="archive-layout">
+  <main class="feed archive-feed">
+    {% if topic_events %}
+      <section class="event-list" aria-labelledby="event-list-title">
+        <h2 id="event-list-title">{% translate "Subiecte urmărite" %}</h2>
+        {% for event in topic_events %}
+          <article class="story-card">
+            <h3><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h3>
+            <p>{{ event.summary|truncatewords:36 }}</p>
+            <small>{{ event.generated_source_count }} {% translate "surse" %} · {% translate "Actualizat" %} {{ event.last_generated_at|date:"d M Y, H:i" }}</small>
+          </article>
+        {% endfor %}
+      </section>
+    {% endif %}
+    {% for article in articles %}
+      {% include "recommendations/_story_card.html" %}
+    {% empty %}
+      <section class="empty">
+        <h2>{% translate "Nu există încă articole." %}</h2>
+      </section>
+    {% endfor %}
+  </main>
+
+  <aside class="archive-navigation" aria-label="{% translate 'Explorează știrile' %}">
+    <section>
+      <h2>{% translate "Categorii" %}</h2>
+      <div class="archive-links">
+        {% for category in archive_categories %}
+          <a href="{% url 'category_archive' category.slug %}">{{ category.name }}</a>
+        {% endfor %}
+      </div>
+    </section>
+    <section>
+      <h2>{% translate "Publicații" %}</h2>
+      <div class="archive-links">
+        {% for source in archive_sources %}
+          <a href="{% url 'source_archive' source.slug %}">{{ source.name }}</a>
+        {% endfor %}
+      </div>
+    </section>
+    <section>
+      <h2>{% translate "Subiecte" %}</h2>
+      <div class="archive-links">
+        {% for topic in archive_topics %}
+          <a href="{% url 'topic_archive' topic.slug %}">{{ topic.name }}</a>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
+</div>
+
+{% if page_obj.has_other_pages %}
+  <nav class="pagination" aria-label="{% translate 'Paginare' %}">
+    {% if page_obj.has_previous %}
+      <a class="pagination-arrow" href="?page={{ page_obj.previous_page_number }}" aria-label="{% translate 'Pagina anterioară' %}" title="{% translate 'Pagina anterioară' %}">
+        <i data-lucide="arrow-left" aria-hidden="true"></i>
+      </a>
+    {% endif %}
+    <span>{% blocktranslate with current=page_obj.number total=page_obj.paginator.num_pages %}Pagina {{ current }} din {{ total }}{% endblocktranslate %}</span>
+    {% if page_obj.has_next %}
+      <a class="pagination-arrow" href="?page={{ page_obj.next_page_number }}" aria-label="{% translate 'Pagina următoare' %}" title="{% translate 'Pagina următoare' %}">
+        <i data-lucide="arrow-right" aria-hidden="true"></i>
+      </a>
+    {% endif %}
+  </nav>
+{% endif %}
+{% endblock %}

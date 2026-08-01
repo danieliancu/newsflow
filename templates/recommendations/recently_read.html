@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% block title %}{% translate "Citite recent" %} · Newsflow{% endblock %}
+{% block content %}
+<header class="intro saved-intro">
+  <p class="eyebrow">{% translate "ISTORICUL TĂU" %}</p>
+  <h1>{% translate "Citite recent" %}</h1>
+  <p>{% translate "Articolele sunt ordonate după ultima deschidere." %}</p>
+</header>
+<div class="feed saved-feed">
+  {% for article in articles %}
+    {% include "recommendations/_story_card.html" %}
+  {% empty %}
+    <section class="empty"><h2>{% translate "Nu ai citit încă articole." %}</h2></section>
+  {% endfor %}
+</div>
+{% endblock %}

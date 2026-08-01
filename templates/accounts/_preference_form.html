@@ -1,0 +1,203 @@
+{% load i18n %}
+<form class="filters-form" method="{% if user.is_authenticated %}post{% else %}get{% endif %}" action="{% if user.is_authenticated %}{% url 'preferences' %}{% else %}{% url 'feed' %}{% endif %}">
+  {% if user.is_authenticated %}
+    {% csrf_token %}
+    {{ preference_form.non_field_errors }}
+  {% endif %}
+
+  <div class="filters-scroll">
+    {% if user.is_authenticated %}
+      <details class="filter-section preference-group" data-preference-group>
+        <summary>
+          <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate categoriile' %}" {% if has_selected_categories %}checked{% endif %}>
+          <span>{% translate "Categorii urmărite" %}</span>
+          <i data-lucide="chevron-down" aria-hidden="true"></i>
+        </summary>
+        <div class="preference-group-options">
+          {% for category in preference_categories %}
+            <label class="check-row">
+              <input type="checkbox" name="categories" value="{{ category.id }}" {% if category.id in selected_category_ids %}checked{% endif %}>
+              <span>{{ category.name }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </details>
+
+      <details class="filter-section preference-group" data-preference-group>
+        <summary>
+          <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate subiectele' %}" {% if has_selected_topics %}checked{% endif %}>
+          <span>{% translate "Subiecte urmărite" %}</span>
+          <i data-lucide="chevron-down" aria-hidden="true"></i>
+        </summary>
+        <div class="preference-group-options">
+          {% for topic in preference_topics %}
+            <label class="check-row">
+              <input type="checkbox" name="topics" value="{{ topic.id }}" {% if topic.id in selected_topic_ids %}checked{% endif %}>
+              <span>{{ topic.name }} <small>{{ topic.category.name }}</small></span>
+            </label>
+          {% empty %}<p class="muted">{% translate "Nu există subiecte configurate." %}</p>{% endfor %}
+        </div>
+      </details>
+
+      <details class="filter-section preference-group followed-terms-group" data-followed-terms-group>
+        <summary>
+          <input type="checkbox" data-term-toggle aria-label="{% translate 'Activează termenii urmăriți' %}" {% if has_followed_terms %}checked{% endif %}>
+          <span>{% translate "Termeni urmăriți" %}</span>
+          <i data-lucide="chevron-down" aria-hidden="true"></i>
+        </summary>
+        <div class="preference-group-options followed-terms-editor">
+          {{ preference_form.followed_terms.errors }}
+          <input type="hidden" name="followed_terms" data-followed-terms-value value="{% for term in followed_terms %}{{ term }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+          <div class="followed-term-pills" data-followed-term-pills>
+            {% for term in followed_terms %}
+              <span class="followed-term-pill" data-term-value="{{ term }}">
+                <span>{{ term }}</span>
+                <button type="button" data-remove-term aria-label="{% blocktranslate %}Elimină {{ term }}{% endblocktranslate %}">×</button>
+              </span>
+            {% endfor %}
+          </div>
+          <div class="followed-term-entry">
+            <input type="text" data-followed-term-input maxlength="80" placeholder="{% translate 'Ex.: inteligență artificială' %}" autocomplete="off">
+            <button type="button" data-add-term aria-label="{% translate 'Adaugă termenul' %}">+</button>
+          </div>
+          <small>{% translate "Maximum 20 · minimum 3 caractere" %}</small>
+        </div>
+      </details>
+
+      <details class="filter-section preference-group" data-preference-group>
+        <summary>
+          <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate publicațiile' %}" {% if has_selected_sources %}checked{% endif %}>
+          <span>{% translate "Publicații preferate" %}</span>
+          <i data-lucide="chevron-down" aria-hidden="true"></i>
+        </summary>
+        <div class="preference-group-options">
+          {% for source in preference_sources %}
+            <label class="check-row">
+              <input type="checkbox" name="preferred_sources" value="{{ source.id }}" {% if source.id in selected_source_ids %}checked{% endif %}>
+              <span>{{ source.name }}</span>
+            </label>
+          {% empty %}<p class="muted">{% translate "Nu există surse configurate." %}</p>{% endfor %}
+        </div>
+      </details>
+
+      <details class="filter-section preference-group preference-group--blocked" data-preference-group>
+        <summary>
+          <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate publicațiile ascunse' %}" {% if has_blocked_sources %}checked{% endif %}>
+          <span>{% translate "Publicații ascunse" %}</span>
+          <i data-lucide="chevron-down" aria-hidden="true"></i>
+        </summary>
+        <div class="preference-group-options">
+          {% for source in preference_sources %}
+            <label class="check-row">
+              <input type="checkbox" name="blocked_sources" value="{{ source.id }}" {% if source.id in blocked_source_ids %}checked{% endif %}>
+              <span>{{ source.name }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </details>
+    {% else %}
+      <section class="filter-section public-source-filter">
+        {% for source in preference_sources %}
+          <label class="check-row">
+            <input type="checkbox" name="preferred_sources" value="{{ source.id }}" {% if source.id in selected_source_ids %}checked{% endif %}>
+            <span>{{ source.name }}</span>
+          </label>
+        {% empty %}<p class="muted">{% translate "Nu există surse configurate." %}</p>{% endfor %}
+      </section>
+    {% endif %}
+  </div>
+
+  <button class="button filters-submit" type="submit">
+    {% if user.is_authenticated %}{% translate "Aplică preferințele" %}{% else %}{% translate "Aplică filtrele" %}{% endif %}
+  </button>
+  {% if not user.is_authenticated %}
+    <button class="guest-login-invite" type="button" data-login-modal-open>
+      <i data-lucide="user-round" aria-hidden="true"></i>
+      <span>{% translate "Salvează preferințele într-un cont" %}</span>
+    </button>
+  {% endif %}
+</form>
+{% if user.is_authenticated %}
+<script>
+  document.querySelectorAll("[data-preference-group]").forEach((group) => {
+    if (group.dataset.preferenceReady) return;
+    group.dataset.preferenceReady = "true";
+    const groupToggle = group.querySelector("[data-group-toggle]");
+    const options = [...group.querySelectorAll(".preference-group-options input[type=checkbox]")];
+    groupToggle.addEventListener("click", (event) => event.stopPropagation());
+    groupToggle.addEventListener("change", () => {
+      options.forEach((option) => { option.checked = groupToggle.checked; });
+    });
+    options.forEach((option) => {
+      option.addEventListener("change", () => {
+        groupToggle.checked = options.some((item) => item.checked);
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-followed-terms-group]").forEach((group) => {
+    if (group.dataset.followedTermsReady) return;
+    group.dataset.followedTermsReady = "true";
+    const groupToggle = group.querySelector("[data-term-toggle]");
+    const valueInput = group.querySelector("[data-followed-terms-value]");
+    const textInput = group.querySelector("[data-followed-term-input]");
+    const pills = group.querySelector("[data-followed-term-pills]");
+    const addButton = group.querySelector("[data-add-term]");
+
+    const values = () => [...pills.querySelectorAll("[data-term-value]")]
+      .map((pill) => pill.dataset.termValue);
+    const sync = () => {
+      valueInput.value = values().join(", ");
+      groupToggle.checked = values().length > 0;
+    };
+    const attachRemove = (pill) => {
+      pill.querySelector("[data-remove-term]").addEventListener("click", () => {
+        pill.remove();
+        sync();
+      });
+    };
+    const addTerm = () => {
+      const term = textInput.value.trim().replace(/\s+/g, " ");
+      if (term.length < 3 || values().length >= 20) return;
+      if (values().some((value) => value.localeCompare(term, undefined, {sensitivity: "base"}) === 0)) {
+        textInput.value = "";
+        return;
+      }
+      const pill = document.createElement("span");
+      pill.className = "followed-term-pill";
+      pill.dataset.termValue = term;
+      const label = document.createElement("span");
+      label.textContent = term;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.dataset.removeTerm = "";
+      remove.setAttribute("aria-label", `Elimină ${term}`);
+      remove.textContent = "×";
+      pill.append(label, remove);
+      pills.append(pill);
+      attachRemove(pill);
+      textInput.value = "";
+      sync();
+    };
+
+    pills.querySelectorAll("[data-term-value]").forEach(attachRemove);
+    groupToggle.addEventListener("click", (event) => event.stopPropagation());
+    groupToggle.addEventListener("change", () => {
+      if (!groupToggle.checked) {
+        pills.replaceChildren();
+        sync();
+      } else {
+        group.open = true;
+        textInput.focus();
+      }
+    });
+    addButton.addEventListener("click", addTerm);
+    textInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === ",") {
+        event.preventDefault();
+        addTerm();
+      }
+    });
+  });
+</script>
+{% endif %}

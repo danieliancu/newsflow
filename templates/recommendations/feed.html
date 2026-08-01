@@ -1,0 +1,375 @@
+{% extends "base.html" %}
+{% load i18n newsflow_tags %}
+{% block title %}{% if seo_category %}Știri {{ seo_category.name }} · Newsflow{% else %}Fluxul tău de știri · Newsflow{% endif %}{% endblock %}
+{% block meta_description %}{% if seo_category %}<meta name="description" content="Cele mai recente știri din categoria {{ seo_category.name }} din publicații românești.">{% else %}{{ block.super }}{% endif %}{% endblock %}
+{% block content %}
+<button class="mobile-filter-trigger" type="button" data-filter-open aria-controls="mobile-filters">
+  {% if user.is_authenticated %}{% translate "Preferințe" %}{% else %}{% translate "Filtre" %}{% endif %}
+</button>
+<div class="filter-overlay" data-filter-close></div>
+<aside class="mobile-filter-drawer" id="mobile-filters" aria-hidden="true">
+  <div class="drawer-heading">
+    <button class="drawer-close" type="button" data-filter-close aria-label="{% translate 'Închide filtrele' %}">×</button>
+  </div>
+  {% include "accounts/_preference_form.html" %}
+</aside>
+
+<div class="feed-layout">
+  <aside class="desktop-filters">
+    {% include "accounts/_preference_form.html" %}
+  </aside>
+  <div class="feed-column">
+    <div class="section-heading-row">
+      <div>
+        <h1 class="eyebrow">{% translate "Subiectele zilei" %}</h1>
+      </div>
+      <a class="section-all-link" href="{% url 'events_archive' %}">
+        {% translate "Vezi toate subiectele" %}<i data-lucide="arrow-right" aria-hidden="true"></i>
+      </a>
+    </div>
+    {% if featured_events %}
+      <section class="homepage-events" aria-label="{% translate 'Subiectele zilei' %}">
+        <div class="featured-events-grid">
+          <div class="featured-event-carousel" data-event-carousel>
+            {% for event in featured_events|slice:":5" %}
+              <article class="featured-event featured-event--lead carousel-slide{% if forloop.first %} is-active{% endif %}" data-carousel-slide aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}">
+                {% if event.representative_image_url %}
+                  <a class="featured-event-image" href="{% url 'event_detail' event.slug %}" aria-label="{{ event.title }}">
+                    <img src="{{ event.representative_image_url }}" alt="" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" decoding="async" referrerpolicy="no-referrer" data-image-remove="parent" onerror="window.newsflowRetryImage(this)">
+                  </a>
+                {% endif %}
+                <div class="carousel-slide-content">
+                  <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
+                  <footer>
+                    <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse" %}</span>
+                    <span>{% translate "Publicat" %} {{ event.first_generated_at|natural_timesince }}</span>
+                  </footer>
+                </div>
+              </article>
+            {% endfor %}
+            {% if featured_events|length > 1 %}
+              <div class="carousel-controls">
+                <button type="button" data-carousel-previous aria-label="{% translate 'Subiectul anterior' %}"><i data-lucide="arrow-left"></i></button>
+                <button type="button" data-carousel-next aria-label="{% translate 'Subiectul următor' %}"><i data-lucide="arrow-right"></i></button>
+              </div>
+            {% endif %}
+          </div>
+          {% for event in featured_events|slice:"5:9" %}
+            <article class="featured-event featured-event--compact">
+              <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
+              <footer>
+                <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse" %}</span>
+                <span>{% translate "Publicat" %} {{ event.first_generated_at|natural_timesince }}</span>
+              </footer>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+    {% if user.is_authenticated %}
+      <div class="personal-feed-toolbar">
+        <nav aria-label="{% translate 'Tipul fluxului' %}">
+          <a href="?view=for-you" {% if feed_mode == "for-you" %}aria-current="page"{% endif %}>{% translate "Pentru tine" %}</a>
+          <a href="?view=latest" {% if feed_mode == "latest" %}aria-current="page"{% endif %}>{% translate "Cele mai noi" %}</a>
+        </nav>
+        <div class="personal-feed-toolbar-actions">
+          {% if new_articles_count %}
+            <span class="new-articles-pill">{% blocktranslate count counter=new_articles_count %}{{ counter }} articol nou{% plural %}{{ counter }} articole noi{% endblocktranslate %}</span>
+          {% endif %}
+          <form class="feed-image-toggle" method="post" action="{% url 'set_display_mode' %}" data-account-feed-display aria-label="{% translate 'Stilul articolelor' %}">
+            {% csrf_token %}
+            <aside class="feed-display-tooltip" data-feed-display-tooltip role="status" hidden>
+              <p>{% translate "Poți modifica aspectul fluxului și din" %} <a href="{% url 'account_dashboard' %}">{% translate "Settings" %}</a>.</p>
+              <button type="button" data-feed-display-tooltip-dismiss>{% translate "Am înțeles" %}</button>
+            </aside>
+            <button class="feed-image-toggle-button{% if user.feed_display_mode == 'cards' %} is-active{% endif %}" type="submit" name="mode" value="cards" aria-pressed="{% if user.feed_display_mode == 'cards' %}true{% else %}false{% endif %}" aria-label="{% translate 'Carduri cu fotografii' %}" title="{% translate 'Carduri cu fotografii' %}">
+              <i data-lucide="grid-3x3" aria-hidden="true"></i>
+            </button>
+            <button class="feed-image-toggle-button{% if user.feed_display_mode == 'compact' %} is-active{% endif %}" type="submit" name="mode" value="compact" aria-pressed="{% if user.feed_display_mode == 'compact' %}true{% else %}false{% endif %}" aria-label="{% translate 'Stil compact, fără fotografii' %}" title="{% translate 'Stil compact, fără fotografii' %}">
+              <i data-lucide="list" aria-hidden="true"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    {% else %}
+      <div class="guest-feed-toolbar">
+        <h2 class="eyebrow">{% translate "Revista Presei" %}</h2>
+        <div class="feed-image-toggle" role="group" aria-label="{% translate 'Stilul articolelor' %}">
+          <aside class="feed-display-tooltip" data-guest-feed-display-tooltip role="status" hidden>
+            <p><a href="{% url 'register' %}">{% translate "Creează un cont" %}</a> {% translate "pentru salvarea preferinței" %}.</p>
+            <button type="button" data-guest-feed-display-tooltip-dismiss>{% translate "Am înțeles" %}</button>
+          </aside>
+          <button class="feed-image-toggle-button" type="button" data-feed-display="cards" aria-pressed="false" aria-label="{% translate 'Carduri cu fotografii' %}" title="{% translate 'Carduri cu fotografii' %}">
+            <i data-lucide="grid-3x3" aria-hidden="true"></i>
+          </button>
+          <button class="feed-image-toggle-button is-active" type="button" data-feed-display="compact" aria-pressed="true" aria-label="{% translate 'Stil compact, fără fotografii' %}" title="{% translate 'Stil compact, fără fotografii' %}">
+            <i data-lucide="list" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    {% endif %}
+    {% for message in messages %}
+      <div class="message {{ message.tags }} feed-message">{{ message }}</div>
+    {% endfor %}
+    <div class="feed{% if not user.is_authenticated or user.feed_display_mode == 'compact' %} feed--compact{% endif %}">
+      {% for article in articles %}
+        {% include "recommendations/_story_card.html" %}
+      {% empty %}
+        <section class="empty">
+          <h2>{% translate "Nu există încă articole." %}</h2>
+          <p>
+            {% translate "Schimbă preferințele sau" %}
+            {% if user.is_authenticated %}
+              <a href="{% url 'feed' %}?view=latest">{% translate "colectează știri noi" %}</a>.
+            {% else %}
+              {% translate "colectează știri noi." %}
+            {% endif %}
+          </p>
+        </section>
+      {% endfor %}
+    </div>
+    {% if other_articles %}
+      <section class="other-news">
+        <div class="other-news-heading">
+          <h2>{% translate "Alte știri" %}</h2>
+          <p>{% translate "Cele mai recente articole." %}</p>
+        </div>
+        <div class="feed secondary-feed{% if not user.is_authenticated or user.feed_display_mode == 'compact' %} feed--compact{% endif %}">
+          {% for article in other_articles %}
+            {% include "recommendations/_story_card.html" %}
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+  </div>
+</div>
+{% if not user.is_authenticated %}
+<dialog class="login-benefits-modal" id="login-benefits-modal" aria-labelledby="login-benefits-title">
+  <button class="login-modal-close" type="button" data-login-modal-close aria-label="{% translate 'Închide' %}">×</button>
+  <span class="login-modal-icon" aria-hidden="true"><i data-lucide="user-round-check"></i></span>
+  <p class="eyebrow">{% translate "FLUXUL TĂU" %}</p>
+  <h2 id="login-benefits-title">{% translate "Păstrează Newsflow așa cum îți place" %}</h2>
+  <p>{% translate "Creează un cont gratuit pentru ca preferințele tale să fie disponibile pe orice dispozitiv." %}</p>
+  <ul>
+    <li><i data-lucide="check"></i><span>{% translate "Urmărești categorii, subiecte și publicații" %}</span></li>
+    <li><i data-lucide="check"></i><span>{% translate "Salvezi știri și revii la istoricul citit" %}</span></li>
+    <li><i data-lucide="check"></i><span>{% translate "Ascunzi sursele care nu te interesează" %}</span></li>
+    <li><i data-lucide="check"></i><span>{% translate "Vezi rapid ce este nou de la ultima vizită" %}</span></li>
+  </ul>
+  <div class="login-modal-actions">
+    <a class="button" href="{% url 'register' %}">{% translate "Creează cont gratuit" %}</a>
+    <a href="{% url 'login' %}">{% translate "Am deja cont" %}</a>
+  </div>
+</dialog>
+{% endif %}
+<script>
+  (() => {
+    const drawer = document.querySelector(".mobile-filter-drawer");
+    const overlay = document.querySelector(".filter-overlay");
+    const openButton = document.querySelector("[data-filter-open]");
+    const closeButtons = document.querySelectorAll("[data-filter-close]");
+    const setOpen = (open) => {
+      drawer.classList.toggle("is-open", open);
+      overlay.classList.toggle("is-open", open);
+      drawer.setAttribute("aria-hidden", String(!open));
+      document.body.classList.toggle("drawer-open", open);
+    };
+    openButton.addEventListener("click", () => setOpen(true));
+    closeButtons.forEach((button) => button.addEventListener("click", () => setOpen(false)));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") setOpen(false);
+    });
+  })();
+
+  {% if not user.is_authenticated %}
+  (() => {
+    const feeds = [...document.querySelectorAll(".feed-column .feed")];
+    const buttons = [...document.querySelectorAll("[data-feed-display]")];
+    const preferenceKey = "newsflow-feed-display-mode";
+    const tooltip = document.querySelector("[data-guest-feed-display-tooltip]");
+    const tooltipDismiss = document.querySelector("[data-guest-feed-display-tooltip-dismiss]");
+    const tooltipPreferenceKey = "newsflow-guest-feed-display-tooltip-dismissed";
+    if (!feeds.length || !buttons.length) return;
+
+    try {
+      if (!window.localStorage.getItem(tooltipPreferenceKey)) tooltip.hidden = false;
+    } catch (error) {
+      tooltip.hidden = false;
+    }
+    tooltipDismiss?.addEventListener("click", () => {
+      tooltip.hidden = true;
+      try { window.localStorage.setItem(tooltipPreferenceKey, "1"); } catch (error) {}
+    });
+
+    const setDisplayMode = (mode) => {
+      feeds.forEach((feed) => feed.classList.toggle("feed--compact", mode === "compact"));
+      buttons.forEach((button) => {
+        const active = button.dataset.feedDisplay === mode;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+    };
+
+    let savedMode = "compact";
+    try { savedMode = window.localStorage.getItem(preferenceKey) || "compact"; } catch (error) {}
+    setDisplayMode(savedMode === "cards" ? "cards" : "compact");
+
+    buttons.forEach((button) => button.addEventListener("click", () => {
+      const mode = button.dataset.feedDisplay;
+      setDisplayMode(mode);
+      try { window.localStorage.setItem(preferenceKey, mode); } catch (error) {}
+    }));
+  })();
+
+  (() => {
+    const modal = document.querySelector("#login-benefits-modal");
+    const inviteSeenKey = "newsflow-login-invite-seen";
+    let automaticInviteTimer = null;
+    const rememberInvite = () => {
+      try { window.localStorage.setItem(inviteSeenKey, "1"); } catch (error) {}
+    };
+    document.querySelectorAll("[data-login-modal-open]").forEach((button) => {
+      button.addEventListener("click", () => {
+        window.clearTimeout(automaticInviteTimer);
+        rememberInvite();
+        modal.showModal();
+      });
+    });
+    modal.querySelector("[data-login-modal-close]").addEventListener("click", () => modal.close());
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) modal.close();
+    });
+    {% if request.path == "/" %}
+    try {
+      if (!window.localStorage.getItem(inviteSeenKey)) {
+        automaticInviteTimer = window.setTimeout(() => {
+          rememberInvite();
+          if (!modal.open) modal.showModal();
+        }, 10000);
+      }
+    } catch (error) {
+      // Browserele care blochează stocarea păstrează deschiderea manuală disponibilă.
+    }
+    {% endif %}
+  })();
+  {% endif %}
+
+  {% if user.is_authenticated %}
+  (() => {
+    const form = document.querySelector("[data-account-feed-display]");
+    if (!form || !window.fetch) return;
+    const feeds = [...document.querySelectorAll(".feed-column .feed")];
+    const buttons = [...form.querySelectorAll("button[name='mode']")];
+    const csrfToken = form.querySelector("[name=csrfmiddlewaretoken]")?.value;
+    const tooltip = form.querySelector("[data-feed-display-tooltip]");
+    const tooltipDismiss = form.querySelector("[data-feed-display-tooltip-dismiss]");
+    const tooltipPreferenceKey = "newsflow-feed-display-tooltip-dismissed-{{ user.pk }}";
+
+    try {
+      if (!window.localStorage.getItem(tooltipPreferenceKey)) tooltip.hidden = false;
+    } catch (error) {
+      tooltip.hidden = false;
+    }
+    tooltipDismiss?.addEventListener("click", () => {
+      tooltip.hidden = true;
+      try { window.localStorage.setItem(tooltipPreferenceKey, "1"); } catch (error) {}
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const button = event.submitter;
+      if (!button) return;
+      const mode = button.value;
+      const formData = new FormData(form);
+      formData.set("mode", mode);
+      try {
+        const response = await fetch(form.action, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {"Accept": "application/json", "X-CSRFToken": csrfToken},
+          body: formData,
+        });
+        if (!response.ok) throw new Error("Request failed");
+        feeds.forEach((feed) => feed.classList.toggle("feed--compact", mode === "compact"));
+        buttons.forEach((item) => {
+          const active = item.value === mode;
+          item.classList.toggle("is-active", active);
+          item.setAttribute("aria-pressed", String(active));
+        });
+      } catch (error) {
+        const fallbackMode = document.createElement("input");
+        fallbackMode.type = "hidden";
+        fallbackMode.name = "mode";
+        fallbackMode.value = mode;
+        form.appendChild(fallbackMode);
+        HTMLFormElement.prototype.submit.call(form);
+      }
+    });
+  })();
+
+  (() => {
+    const articleIds = [...document.querySelectorAll(".story[data-article-id]")]
+      .map((card) => Number(card.dataset.articleId))
+      .filter(Number.isInteger)
+      .slice(0, 50);
+    const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]")?.value;
+    if (!articleIds.length || !csrfToken) return;
+    fetch("{% url 'track_shown_articles' %}", {
+      method: "POST",
+      credentials: "same-origin",
+      keepalive: true,
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken,
+      },
+      body: JSON.stringify({ article_ids: articleIds }),
+    }).catch(() => {});
+  })();
+  {% endif %}
+
+  (() => {
+    const carousel = document.querySelector("[data-event-carousel]");
+    if (!carousel) return;
+    const slides = [...carousel.querySelectorAll("[data-carousel-slide]")];
+    if (slides.length < 2) return;
+    let index = 0;
+    let timer;
+    const show = (nextIndex, direction = 1) => {
+      const outgoing = slides[index];
+      const incomingIndex = (nextIndex + slides.length) % slides.length;
+      const incoming = slides[incomingIndex];
+      if (incoming === outgoing) return;
+      const enteringClass = direction > 0 ? "is-entering-right" : "is-entering-left";
+      const leavingClass = direction > 0 ? "is-leaving-left" : "is-leaving-right";
+      outgoing.classList.remove("is-active");
+      outgoing.classList.add(leavingClass);
+      outgoing.setAttribute("aria-hidden", "true");
+      incoming.classList.remove("is-leaving-left", "is-leaving-right");
+      incoming.classList.add(enteringClass);
+      incoming.setAttribute("aria-hidden", "false");
+      void incoming.offsetWidth;
+      incoming.classList.remove(enteringClass);
+      incoming.classList.add("is-active");
+      index = incomingIndex;
+      window.setTimeout(() => {
+        outgoing.classList.remove("is-leaving-left", "is-leaving-right");
+      }, 440);
+    };
+    const restart = () => {
+      window.clearInterval(timer);
+      timer = window.setInterval(() => show(index + 1, 1), 5000);
+    };
+    carousel.querySelector("[data-carousel-previous]")?.addEventListener("click", () => {
+      show(index - 1, -1);
+      restart();
+    });
+    carousel.querySelector("[data-carousel-next]")?.addEventListener("click", () => {
+      show(index + 1, 1);
+      restart();
+    });
+    carousel.addEventListener("mouseenter", () => window.clearInterval(timer));
+    carousel.addEventListener("mouseleave", restart);
+    restart();
+  })();
+</script>
+{% endblock %}

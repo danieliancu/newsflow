@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% load i18n %}
+{% block title %}{% translate "Verifică emailul" %} · Newsflow{% endblock %}
+{% block content %}
+<section class="panel narrow auth-panel auth-status">
+  <div class="auth-status-icon" aria-hidden="true">
+    <i data-lucide="mail-check"></i>
+  </div>
+  <div class="auth-heading">
+    <p class="eyebrow">{% translate "Încă un pas" %}</p>
+    <h1>{% translate "Verifică emailul" %}</h1>
+    <p class="auth-subtitle">
+      {% translate "Ți-am trimis un link unic. Accesează-l în următoarele 15 minute pentru a continua." %}
+    </p>
+  </div>
+  <form method="post" action="{% url 'resend_email_challenge' %}">
+    {% csrf_token %}
+    <button class="button auth-submit" type="submit">{% translate "Retrimite linkul" %}</button>
+  </form>
+  <p class="auth-switch">
+    <a href="{% url 'login' %}">{% translate "Înapoi la autentificare" %}</a>
+  </p>
+</section>
+{% endblock %}

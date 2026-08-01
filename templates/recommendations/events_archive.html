@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% translate "Subiectele zilei" %} · Newsflow{% endblock %}
+{% block meta_description %}<meta name="description" content="{{ og_description }}">{% endblock %}
+{% block content %}
+{% if page_obj.number == 1 %}
+  <header class="archive-heading events-archive-heading">
+    <nav class="breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+      <a href="{% url 'feed' %}">Newsflow</a>
+      <span aria-hidden="true">/</span>
+      <span>{% translate "Subiecte" %}</span>
+    </nav>
+    <h1>{% translate "Subiectele zilei" %}</h1>
+    <p>{% translate "Știrile importante, reunite și comparate din mai multe surse." %}</p>
+    <div class="archive-count">{% blocktranslate count counter=current_events_count %}{{ counter }} subiect{% plural %}{{ counter }} subiecte{% endblocktranslate %}</div>
+  </header>
+{% endif %}
+
+<div class="events-archive-layout">
+  <main class="events-archive-content">
+    {% if page_obj.number == 1 %}
+      <div class="events-page-grid events-current-grid">
+        {% for event in current_events %}
+          <article class="event-archive-card">
+            {% if event.representative_image_url %}
+              <a class="event-archive-image" href="{% url 'event_detail' event.slug %}" aria-label="{{ event.title }}">
+                <img src="{{ event.representative_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-image-remove="parent" onerror="window.newsflowRetryImage(this)">
+              </a>
+            {% endif %}
+            <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
+            <p>{{ event.summary|truncatewords:55 }}</p>
+            <footer>
+              <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse distincte" %}</span>
+              <span>{% translate "Actualizat" %} {{ event.last_generated_at|date:"H:i" }}</span>
+            </footer>
+          </article>
+        {% empty %}
+          <section class="empty events-empty">
+            <h2>{% translate "Nu există încă subiecte astăzi." %}</h2>
+            <p>{% translate "Subiectele apar aici după ce informațiile sunt susținute de suficiente surse." %}</p>
+          </section>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% for group in previous_event_groups %}
+      <section class="other-news events-day-section">
+        <div class="personal-feed-toolbar events-day-toolbar">
+          <h2>{{ group.date|date:"l, d F Y"|capfirst }}</h2>
+          <span class="new-articles-pill">{% blocktranslate count counter=group.events|length %}{{ counter }} subiect{% plural %}{{ counter }} subiecte{% endblocktranslate %}</span>
+        </div>
+        <div class="events-page-grid previous-events-grid">
+          {% for event in group.events %}
+            <article class="event-archive-card event-archive-card--previous">
+              {% if event.representative_image_url %}
+                <a class="event-archive-image" href="{% url 'event_detail' event.slug %}" aria-label="{{ event.title }}">
+                  <img src="{{ event.representative_image_url }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-image-remove="parent" onerror="window.newsflowRetryImage(this)">
+                </a>
+              {% endif %}
+              <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
+              <p>{{ event.summary|truncatewords:32 }}</p>
+              <footer>
+                <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse distincte" %}</span>
+                <span>{{ event.last_generated_at|date:"H:i" }}</span>
+              </footer>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </main>
+
+  <aside class="archive-navigation events-filter-navigation" aria-label="{% translate 'Explorează știrile' %}">
+    <section>
+      <h2>{% translate "Categorii" %}</h2>
+      <div class="archive-links">
+        {% for category in archive_categories %}<a href="{% url 'category_archive' category.slug %}">{{ category.name }}</a>{% endfor %}
+      </div>
+    </section>
+    <section>
+      <h2>{% translate "Publicații" %}</h2>
+      <div class="archive-links">
+        {% for source in archive_sources %}<a href="{% url 'source_archive' source.slug %}">{{ source.name }}</a>{% endfor %}
+      </div>
+    </section>
+    <section>
+      <h2>{% translate "Subiecte" %}</h2>
+      <div class="archive-links">
+        {% for topic in archive_topics %}<a href="{% url 'topic_archive' topic.slug %}">{{ topic.name }}</a>{% endfor %}
+      </div>
+    </section>
+  </aside>
+</div>
+{% if page_obj.has_other_pages %}
+  <nav class="pagination" aria-label="{% translate 'Paginare' %}">
+    {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">{% translate "Înapoi" %}</a>{% endif %}
+    <span>{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">{% translate "Înainte" %}</a>{% endif %}
+  </nav>
+{% endif %}
+{% endblock %}

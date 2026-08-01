@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block robots %}<meta name="robots" content="noindex,follow">{% endblock %}
+{% block title %}{% translate "Conținut ascuns" %} · Newsflow{% endblock %}
+{% block content %}
+<header class="intro saved-intro">
+  <p class="eyebrow">{% translate "CONTROLUL FLUXULUI" %}</p>
+  <h1>{% translate "Conținut ascuns" %}</h1>
+  <p>{% translate "Poți readuce oricând publicațiile și știrile ascunse." %}</p>
+</header>
+{% if blocked_sources %}
+<section class="panel hidden-sources-panel">
+  <h2>{% translate "Publicații ascunse" %}</h2>
+  <div class="hidden-source-list">
+    {% for source in blocked_sources %}
+      <form method="post" action="{% url 'restore_source' source.pk %}">
+        {% csrf_token %}<span>{{ source.name }}</span>
+        <button class="button small" type="submit">{% translate "Restaurează" %}</button>
+      </form>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+<div class="feed saved-feed">
+  {% for article in articles %}
+    <article class="story">
+      <div class="story-meta"><span>{{ article.source.name }}</span></div>
+      <h2>{{ article.title }}</h2>
+      <form method="post" action="{% url 'restore_article' article.pk %}">
+        {% csrf_token %}<button class="button small" type="submit">{% translate "Restaurează știrea" %}</button>
+      </form>
+    </article>
+  {% empty %}
+    {% if not blocked_sources %}<section class="empty"><h2>{% translate "Nu ai conținut ascuns." %}</h2></section>{% endif %}
+  {% endfor %}
+</div>
+{% endblock %}
