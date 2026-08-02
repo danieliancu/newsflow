@@ -3,16 +3,22 @@
 {% block title %}{{ archive_title }}{% endblock %}
 {% block meta_description %}<meta name="description" content="{{ archive_description }}">{% endblock %}
 {% block content %}
-<header class="archive-heading">
-  <nav class="breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
-    <a href="{% url 'feed' %}">Newsflow</a>
-    <span aria-hidden="true">/</span>
-    <span>{{ archive_entity.name }}</span>
-  </nav>
-  <h1>{{ archive_entity.name }}</h1>
-  <p>{{ archive_description }}</p>
-  <div class="archive-count">{{ page_obj.paginator.count }} {% translate "articole" %}</div>
-</header>
+{% if page_obj.number == 1 %}
+  <header class="archive-heading">
+    <nav class="breadcrumbs" aria-label="{% translate 'Breadcrumb' %}">
+      <a href="{% url 'feed' %}">Newsflow</a>
+      <span aria-hidden="true">/</span>
+      <span>{{ archive_entity.name }}</span>
+    </nav>
+    <h1>{{ archive_entity.name }}</h1>
+    <p>{{ archive_description }}</p>
+    <div class="archive-count">
+      {% blocktranslate count counter=current_articles_count %}{{ counter }} articol{% plural %}{{ counter }} articole{% endblocktranslate %}
+      <span aria-hidden="true">•</span>
+      {{ today_date|date:"d F Y" }}
+    </div>
+  </header>
+{% endif %}
 
 <div class="archive-layout">
   <main class="feed archive-feed">
@@ -26,12 +32,38 @@
         </div>
       </section>
     {% endif %}
-    {% for article in articles %}
-      {% include "recommendations/_story_card.html" %}
-    {% empty %}
-      <section class="empty">
-        <h2>{% translate "Nu există încă articole." %}</h2>
+    {% if page_obj.number == 1 %}
+      <section class="archive-current-day archive-day-section">
+        <div class="events-page-grid archive-day-grid">
+          {% for article in current_articles %}
+            {% include "recommendations/_story_card.html" with story_card_class="story--archive-card" %}
+          {% empty %}
+            <section class="empty archive-day-empty">
+              <h2>{% translate "Nu există încă articole astăzi." %}</h2>
+            </section>
+          {% endfor %}
+        </div>
       </section>
+    {% endif %}
+
+    {% for group in previous_article_groups %}
+      <section class="other-news events-day-section archive-day-section">
+        <div class="personal-feed-toolbar events-day-toolbar">
+          <h2>{{ group.date|date:"l, d F Y"|capfirst }}</h2>
+          <span class="new-articles-pill">{% blocktranslate count counter=group.articles|length %}{{ counter }} articol{% plural %}{{ counter }} articole{% endblocktranslate %}</span>
+        </div>
+        <div class="events-page-grid archive-day-grid">
+          {% for article in group.articles %}
+            {% include "recommendations/_story_card.html" with story_card_class="story--archive-card story--archive-card-previous" %}
+          {% endfor %}
+        </div>
+      </section>
+    {% empty %}
+      {% if page_obj.number != 1 and not current_articles %}
+        <section class="empty">
+          <h2>{% translate "Nu există încă articole." %}</h2>
+        </section>
+      {% endif %}
     {% endfor %}
   </main>
 

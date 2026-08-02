@@ -655,7 +655,14 @@ class EventPipelineTests(TestCase):
         self.assertIn("focus pe informații", summary_instructions)
         self.assertIn("stil jurnalistic clar și fluent", summary_instructions)
         self.assertIn("Evită repetițiile, dramatizarea", summary_instructions)
-        self.assertIn("Potrivit [numele publicației]", summary_instructions)
+        self.assertIn(
+            "Titlul și summary trebuie să descrie exclusiv evenimentul",
+            summary_instructions,
+        )
+        self.assertIn("fără nume de publicații", summary_instructions)
+        self.assertIn("«informația este confirmată»", summary_instructions)
+        self.assertIn("omite-l din summary", summary_instructions)
+        self.assertNotIn("atribuirea explicită", summary_instructions)
         self.assertIn("diferă în mod real", summary_instructions)
         self.assertIn("returnează differences ca listă goală", summary_instructions)
         self.assertIn("3 milioane EUR", summary_instructions)

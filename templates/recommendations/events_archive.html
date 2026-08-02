@@ -12,7 +12,11 @@
     </nav>
     <h1>{% translate "Subiectele zilei" %}</h1>
     <p>{% translate "Știrile importante, reunite și comparate din mai multe surse." %}</p>
-    <div class="archive-count">{% blocktranslate count counter=current_events_count %}{{ counter }} subiect{% plural %}{{ counter }} subiecte{% endblocktranslate %}</div>
+    <div class="archive-count">
+      {% blocktranslate count counter=current_events_count %}{{ counter }} subiect{% plural %}{{ counter }} subiecte{% endblocktranslate %}
+      <span aria-hidden="true">•</span>
+      {{ today_date|date:"d F Y" }}
+    </div>
   </header>
 {% endif %}
 

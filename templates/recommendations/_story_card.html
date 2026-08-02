@@ -1,5 +1,5 @@
 {% load i18n %}
-<article class="story" data-article-id="{{ article.id }}">
+<article class="story{% if story_card_class %} {{ story_card_class }}{% endif %}" data-article-id="{{ article.id }}">
   {% if article.image_url %}
     <a
       class="story-image"

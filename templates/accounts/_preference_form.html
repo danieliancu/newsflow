@@ -9,6 +9,38 @@
     {% if user.is_authenticated %}
       <details class="filter-section preference-group" data-preference-group>
         <summary>
+          <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate publicațiile' %}" {% if has_selected_sources %}checked{% endif %}>
+          <span>{% translate "Publicații preferate" %}</span>
+          <i data-lucide="chevron-down" aria-hidden="true"></i>
+        </summary>
+        <div class="preference-group-options">
+          {% for source in preference_sources %}
+            <label class="check-row">
+              <input type="checkbox" name="preferred_sources" value="{{ source.id }}" {% if source.id in selected_source_ids %}checked{% endif %}>
+              <span>{{ source.name }}</span>
+            </label>
+          {% empty %}<p class="muted">{% translate "Nu există surse configurate." %}</p>{% endfor %}
+        </div>
+      </details>
+
+      <details class="filter-section preference-group preference-group--blocked" data-preference-group>
+        <summary>
+          <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate publicațiile ascunse' %}" {% if has_blocked_sources %}checked{% endif %}>
+          <span>{% translate "Publicații ascunse" %}</span>
+          <i data-lucide="chevron-down" aria-hidden="true"></i>
+        </summary>
+        <div class="preference-group-options">
+          {% for source in preference_sources %}
+            <label class="check-row">
+              <input type="checkbox" name="blocked_sources" value="{{ source.id }}" {% if source.id in blocked_source_ids %}checked{% endif %}>
+              <span>{{ source.name }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </details>
+
+      <details class="filter-section preference-group" data-preference-group>
+        <summary>
           <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate categoriile' %}" {% if has_selected_categories %}checked{% endif %}>
           <span>{% translate "Categorii urmărite" %}</span>
           <i data-lucide="chevron-down" aria-hidden="true"></i>
@@ -64,37 +96,6 @@
         </div>
       </details>
 
-      <details class="filter-section preference-group" data-preference-group>
-        <summary>
-          <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate publicațiile' %}" {% if has_selected_sources %}checked{% endif %}>
-          <span>{% translate "Publicații preferate" %}</span>
-          <i data-lucide="chevron-down" aria-hidden="true"></i>
-        </summary>
-        <div class="preference-group-options">
-          {% for source in preference_sources %}
-            <label class="check-row">
-              <input type="checkbox" name="preferred_sources" value="{{ source.id }}" {% if source.id in selected_source_ids %}checked{% endif %}>
-              <span>{{ source.name }}</span>
-            </label>
-          {% empty %}<p class="muted">{% translate "Nu există surse configurate." %}</p>{% endfor %}
-        </div>
-      </details>
-
-      <details class="filter-section preference-group preference-group--blocked" data-preference-group>
-        <summary>
-          <input type="checkbox" data-group-toggle aria-label="{% translate 'Selectează toate publicațiile ascunse' %}" {% if has_blocked_sources %}checked{% endif %}>
-          <span>{% translate "Publicații ascunse" %}</span>
-          <i data-lucide="chevron-down" aria-hidden="true"></i>
-        </summary>
-        <div class="preference-group-options">
-          {% for source in preference_sources %}
-            <label class="check-row">
-              <input type="checkbox" name="blocked_sources" value="{{ source.id }}" {% if source.id in blocked_source_ids %}checked{% endif %}>
-              <span>{{ source.name }}</span>
-            </label>
-          {% endfor %}
-        </div>
-      </details>
     {% else %}
       <section class="filter-section public-source-filter">
         {% for source in preference_sources %}
@@ -108,7 +109,7 @@
   </div>
 
   <button class="button filters-submit" type="submit">
-    {% if user.is_authenticated %}{% translate "Aplică preferințele" %}{% else %}{% translate "Aplică filtrele" %}{% endif %}
+    {% if user.is_authenticated %}{% translate "Aplică preferințele" %}{% else %}{% translate "Filtrează revista presei" %}{% endif %}
   </button>
   {% if not user.is_authenticated %}
     <button class="guest-login-invite" type="button" data-login-modal-open>

@@ -1,5 +1,6 @@
 import json
 import re
+import unicodedata
 from copy import deepcopy
 from datetime import date, timedelta
 from urllib.parse import urljoin
@@ -68,6 +69,21 @@ def _event_seo_description(summary):
         if len(" ".join(selected)) >= 130:
             break
     return " ".join(selected) or text
+
+
+def _search_normalize(value):
+    """Fold Romanian diacritics and Unicode variants for accent-insensitive search."""
+    decomposed = unicodedata.normalize("NFKD", str(value or ""))
+    return "".join(char for char in decomposed if not unicodedata.combining(char)).casefold()
+
+
+def _normalized_search_ids(rows, query, fields):
+    needle = _search_normalize(query)
+    return [
+        row["id"]
+        for row in rows
+        if any(needle in _search_normalize(row.get(field)) for field in fields)
+    ]
 
 
 def _compact_schema(value):
@@ -298,14 +314,31 @@ def _archive_navigation():
 def _archive_response(
     request, entity, archive_type, queryset, title, description, extra_context=None
 ):
-    page_obj = Paginator(queryset.order_by("-published_at", "-collected_at"), 24).get_page(
-        request.GET.get("page")
-    )
+    ordered_queryset = queryset.order_by("-published_at", "-collected_at")
+    today = timezone.localdate()
+    current_articles_query = ordered_queryset.filter(published_at__date=today)
+    current_article_ids = list(current_articles_query.values_list("pk", flat=True))
+    previous_articles_query = ordered_queryset.exclude(pk__in=current_article_ids)
+    page_obj = Paginator(previous_articles_query, 24).get_page(request.GET.get("page"))
+    current_articles = list(current_articles_query) if page_obj.number == 1 else []
+    previous_articles = list(page_obj.object_list)
+    previous_article_groups = []
+    for article in previous_articles:
+        timestamp = article.published_at or article.collected_at
+        article_day = timezone.localdate(timestamp)
+        if (
+            not previous_article_groups
+            or previous_article_groups[-1]["date"] != article_day
+        ):
+            previous_article_groups.append({"date": article_day, "articles": []})
+        previous_article_groups[-1]["articles"].append(article)
+
     path = reverse(f"{archive_type}_archive", kwargs={"slug": entity.slug})
     page_number = page_obj.number
     canonical_path = path if page_number == 1 else f"{path}?page={page_number}"
     canonical_url = _public_url(canonical_path)
-    indexable = page_obj.paginator.count >= 5
+    total_article_count = ordered_queryset.count()
+    indexable = total_article_count >= 5
     breadcrumb_label = {
         "category": "Categorii",
         "source": "Publicații",
@@ -318,7 +351,7 @@ def _archive_response(
             "url": article.canonical_url,
             "name": article.title,
         }
-        for index, article in enumerate(page_obj.object_list)
+        for index, article in enumerate(current_articles + previous_articles)
     ]
     structured_data = {
         "@context": "https://schema.org",
@@ -361,7 +394,12 @@ def _archive_response(
         "archive_title": title,
         "archive_description": description,
         "page_obj": page_obj,
-        "articles": page_obj.object_list,
+        "articles": current_articles + previous_articles,
+        "current_articles": current_articles,
+        "current_articles_count": len(current_articles),
+        "today_date": today,
+        "previous_article_groups": previous_article_groups,
+        "total_article_count": total_article_count,
         "saved_ids": _saved_ids(request),
         "saved_event_ids": _saved_event_ids(request),
         "canonical_url": canonical_url,
@@ -373,8 +411,7 @@ def _archive_response(
         ),
     }
     context.update(_archive_navigation())
-    if archive_type == "topic":
-        today = timezone.localdate()
+    if archive_type == "topic" and page_obj.number == 1:
         context["topic_events"] = _with_representative_images(
             Event.objects.filter(
                 status__in=[Event.Status.INDEXABLE, Event.Status.STABLE],
@@ -500,6 +537,7 @@ def events_archive(request):
         "page_obj": page_obj,
         "current_events": current_events,
         "current_events_count": len(current_events),
+        "today_date": today,
         "saved_event_ids": _saved_event_ids(request),
         "previous_event_groups": previous_event_groups,
         "canonical_url": _public_url(canonical_path),
@@ -868,23 +906,29 @@ def search_results(request):
     articles = Article.objects.none()
     events = Event.objects.none()
     if query:
-        articles = (
+        article_base = (
             Article.objects.filter(
                 processing_status=Article.ProcessingStatus.PROCESSED,
                 duplicate_of__isnull=True,
             )
-            .filter(
-                Q(title__icontains=query)
-                | Q(first_paragraph__icontains=query)
-                | Q(source__name__icontains=query)
-            )
             .select_related("source", "primary_category")
             .prefetch_related("topic_matches__topic")
-            .order_by("-published_at", "-collected_at")
         )
-        events = _public_events().filter(
-            Q(title__icontains=query) | Q(summary__icontains=query)
-        )[:12]
+        article_ids = _normalized_search_ids(
+            article_base.values("id", "title", "first_paragraph", "source__name"),
+            query,
+            ("title", "first_paragraph", "source__name"),
+        )
+        articles = article_base.filter(pk__in=article_ids).order_by(
+            "-published_at", "-collected_at"
+        )
+        event_base = _public_events()
+        event_ids = _normalized_search_ids(
+            event_base.values("id", "title", "summary"),
+            query,
+            ("title", "summary"),
+        )
+        events = event_base.filter(pk__in=event_ids)[:12]
     page_obj = Paginator(articles, 24).get_page(request.GET.get("page"))
     events = _with_representative_images(events)
     saved_ids = set()

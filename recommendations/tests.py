@@ -557,6 +557,57 @@ class FeedInterfaceTests(TestCase):
         self.assertContains(saved_page, "Subiect AI salvat")
         self.assertContains(saved_page, ">1</span>")
 
+    def test_event_timeline_is_hidden_with_one_date_and_shown_with_two(self):
+        event = Event.objects.create(
+            title="Subiect cu cronologie",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză publică pentru cronologie.",
+            generated_source_count=3,
+            first_generated_at=timezone.now(),
+            last_generated_at=timezone.now(),
+            timeline=[
+                {
+                    "date": "2026-08-02",
+                    "text": "Primul moment al evenimentului.",
+                    "article_ids": [1],
+                }
+            ],
+        )
+
+        single_date = self.client.get(event.public_path)
+        self.assertNotContains(single_date, "Cronologie")
+        self.assertNotContains(single_date, "Primul moment al evenimentului.")
+
+        event.timeline.append(
+            {
+                "date": "2026-08-03",
+                "text": "Al doilea moment al evenimentului.",
+                "article_ids": [2],
+            }
+        )
+        event.save(update_fields=["timeline"])
+
+        two_dates = self.client.get(event.public_path)
+        self.assertContains(two_dates, "Cronologie")
+        self.assertContains(two_dates, "Primul moment al evenimentului.")
+        self.assertContains(two_dates, "Al doilea moment al evenimentului.")
+
+    def test_event_hides_updated_label_when_generation_times_are_identical(self):
+        generated_at = timezone.now()
+        event = Event.objects.create(
+            title="Subiect publicat o singură dată",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză publică fără actualizări ulterioare.",
+            generated_source_count=3,
+            first_generated_at=generated_at,
+            last_generated_at=generated_at,
+        )
+
+        response = self.client.get(event.public_path)
+
+        self.assertContains(response, "Publicat")
+        self.assertNotContains(response, "Actualizat")
+
     def test_event_can_be_removed_from_saved_page(self):
         event = Event.objects.create(
             title="Subiect AI de eliminat",
@@ -627,7 +678,7 @@ class AnonymousFeedFilterTests(TestCase):
         for path in ["/about/", "/terms/", "/privacy/", "/cookies/", "/contact/"]:
             self.assertContains(response, f'href="{path}"')
         self.assertNotContains(response, "Filtrele nu se salvează.")
-        self.assertContains(response, "Aplică filtrele", count=2)
+        self.assertContains(response, "Filtrează revista presei", count=2)
         self.assertNotContains(response, "data-preference-group")
         self.assertContains(
             response,
@@ -765,6 +816,21 @@ class SearchInterfaceTests(TestCase):
             self.assertContains(response, "Înapoi la homepage")
             self.assertContains(response, '<meta name="robots" content="noindex,follow">', html=True)
 
+    def test_search_is_insensitive_to_romanian_diacritics(self):
+        for query in ("inflatia", "preturile", "publicatie economica"):
+            response = self.client.get("/search/", {"q": query})
+            self.assertContains(response, self.article.title)
+            self.assertEqual(response.context["page_obj"].paginator.count, 1)
+
+        plain_article = Article.objects.create(
+            source=self.source,
+            canonical_url="https://cautare.ro/stire-fara-diacritice",
+            title="Stire despre Bucuresti",
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        response = self.client.get("/search/", {"q": "București"})
+        self.assertContains(response, plain_article.title)
+
     def test_search_excludes_failed_and_duplicate_articles(self):
         failed = Article.objects.create(
             source=self.source,
@@ -807,6 +873,9 @@ class SearchInterfaceTests(TestCase):
         summary_response = self.client.get("/search/", {"q": "recepționat"})
         self.assertContains(summary_response, event.title)
 
+        normalized_response = self.client.get("/search/", {"q": "receptionat"})
+        self.assertContains(normalized_response, event.title)
+
     def test_search_results_are_paginated(self):
         Article.objects.bulk_create(
             [
@@ -837,12 +906,14 @@ class SeoArchiveTests(TestCase):
             domain="seo.ro",
             feed_url="https://seo.ro/rss",
         )
+        yesterday = timezone.now() - timedelta(days=1)
         for index in range(26):
             article = Article.objects.create(
                 source=self.source,
                 canonical_url=f"https://seo.ro/articol-{index}",
                 title=f"Articol SEO {index}",
                 primary_category=self.category,
+                published_at=yesterday,
                 processing_status=Article.ProcessingStatus.PROCESSED,
             )
             ArticleTopic.objects.create(article=article, topic=self.topic, score=5)
@@ -882,14 +953,66 @@ class SeoArchiveTests(TestCase):
             self.assertContains(response, '"@type": "CollectionPage"')
             self.assertContains(response, '"@type": "BreadcrumbList"')
 
+    def test_archives_show_today_first_and_group_older_articles_by_day(self):
+        today_article = Article.objects.get(title="Articol SEO 0")
+        older_article = Article.objects.get(title="Articol SEO 1")
+        today_article.published_at = timezone.now()
+        today_article.save(update_fields=["published_at"])
+        older_article.published_at = timezone.now() - timedelta(days=2)
+        older_article.save(update_fields=["published_at"])
+
+        paths = (
+            f"/category/{self.category.slug}/",
+            f"/source/{self.source.slug}/",
+            f"/topic/{self.topic.slug}/",
+        )
+        for path in paths:
+            response = self.client.get(path)
+            content = response.content.decode()
+            self.assertEqual(list(response.context["current_articles"]), [today_article])
+            self.assertEqual(response.context["current_articles_count"], 1)
+            self.assertContains(
+                response,
+                'class="other-news events-day-section archive-day-section"',
+            )
+            self.assertContains(response, 'class="events-page-grid archive-day-grid"')
+            self.assertContains(response, 'class="story story--archive-card', count=25)
+            self.assertContains(
+                response,
+                'class="personal-feed-toolbar events-day-toolbar"',
+            )
+            self.assertContains(
+                response,
+                timezone.localdate().strftime("%d"),
+            )
+            self.assertLess(
+                content.index(today_article.title),
+                content.index(older_article.title),
+            )
+
     def test_paginated_archive_has_clean_self_canonical(self):
-        response = self.client.get(
-            f"/category/{self.category.slug}/", {"page": 2, "tracking": "x"}
+        archive_paths = (
+            ("category", self.category.slug),
+            ("source", self.source.slug),
+            ("topic", self.topic.slug),
         )
-        self.assertEqual(
-            response.context["canonical_url"],
-            f"https://newsflow.example/category/{self.category.slug}/?page=2",
-        )
+        for archive_type, slug in archive_paths:
+            path = f"/{archive_type}/{slug}/"
+            first_page = self.client.get(path)
+            second_page = self.client.get(path, {"page": 2, "tracking": "x"})
+
+            self.assertContains(first_page, 'class="archive-heading"')
+            self.assertContains(first_page, 'class="archive-count"')
+            self.assertNotContains(second_page, 'class="archive-heading"')
+            self.assertNotContains(second_page, 'class="archive-count"')
+            self.assertNotContains(second_page, "Nu există încă articole astăzi.")
+            self.assertContains(second_page, 'class="other-news events-day-section')
+            self.assertContains(second_page, 'class="events-page-grid archive-day-grid"')
+            self.assertContains(second_page, 'aria-label="Paginare"')
+            self.assertEqual(
+                second_page.context["canonical_url"],
+                f"https://newsflow.example{path}?page=2",
+            )
 
     def test_romanian_category_path_redirects_to_english_path(self):
         response = self.client.get(
