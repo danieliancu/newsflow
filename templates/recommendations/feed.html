@@ -3,7 +3,7 @@
 {% block title %}{% if seo_category %}Știri {{ seo_category.name }} · Newsflow{% else %}Fluxul tău de știri · Newsflow{% endif %}{% endblock %}
 {% block meta_description %}{% if seo_category %}<meta name="description" content="Cele mai recente știri din categoria {{ seo_category.name }} din publicații românești.">{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
-<button class="mobile-filter-trigger" type="button" data-filter-open aria-controls="mobile-filters">
+<button class="mobile-filter-trigger" type="button" data-filter-open aria-controls="mobile-filters" aria-expanded="false">
   {% if user.is_authenticated %}{% translate "Preferințe" %}{% else %}{% translate "Filtre" %}{% endif %}
 </button>
 <div class="filter-overlay" data-filter-close></div>
@@ -111,6 +111,12 @@
     {% for message in messages %}
       <div class="message {{ message.tags }} feed-message">{{ message }}</div>
     {% endfor %}
+    {% if selected_guest_topic %}
+      <aside class="guest-topic-banner">
+        <div><strong>{% blocktranslate with topic=selected_guest_topic.name %}Urmărești temporar „{{ topic }}”.{% endblocktranslate %}</strong> {% translate "Creează un cont gratuit pentru a păstra acest subiect și pentru a construi un flux personalizat." %}</div>
+        <a class="button" href="{% url 'register' %}?next={{ guest_auth_next|urlencode }}" data-login-modal-open data-benefit-message="Creează un cont gratuit pentru a păstra acest subiect și pentru a construi un flux personalizat.">{% translate "Păstrează acest subiect" %}</a>
+      </aside>
+    {% endif %}
     <div class="feed{% if not user.is_authenticated or user.feed_display_mode == 'compact' %} feed--compact{% endif %}">
       {% for article in articles %}
         {% include "recommendations/_story_card.html" %}
@@ -143,25 +149,6 @@
     {% endif %}
   </div>
 </div>
-{% if not user.is_authenticated %}
-<dialog class="login-benefits-modal" id="login-benefits-modal" aria-labelledby="login-benefits-title">
-  <button class="login-modal-close" type="button" data-login-modal-close aria-label="{% translate 'Închide' %}">×</button>
-  <span class="login-modal-icon" aria-hidden="true"><i data-lucide="user-round-check"></i></span>
-  <p class="eyebrow">{% translate "FLUXUL TĂU" %}</p>
-  <h2 id="login-benefits-title">{% translate "Păstrează Newsflow așa cum îți place" %}</h2>
-  <p>{% translate "Creează un cont gratuit pentru ca preferințele tale să fie disponibile pe orice dispozitiv." %}</p>
-  <ul>
-    <li><i data-lucide="check"></i><span>{% translate "Urmărești categorii, subiecte și publicații" %}</span></li>
-    <li><i data-lucide="check"></i><span>{% translate "Salvezi știri și revii la istoricul citit" %}</span></li>
-    <li><i data-lucide="check"></i><span>{% translate "Ascunzi sursele care nu te interesează" %}</span></li>
-    <li><i data-lucide="check"></i><span>{% translate "Vezi rapid ce este nou de la ultima vizită" %}</span></li>
-  </ul>
-  <div class="login-modal-actions">
-    <a class="button" href="{% url 'register' %}">{% translate "Creează cont gratuit" %}</a>
-    <a href="{% url 'login' %}">{% translate "Am deja cont" %}</a>
-  </div>
-</dialog>
-{% endif %}
 <script>
   (() => {
     const drawer = document.querySelector(".mobile-filter-drawer");
@@ -172,7 +159,9 @@
       drawer.classList.toggle("is-open", open);
       overlay.classList.toggle("is-open", open);
       drawer.setAttribute("aria-hidden", String(!open));
+      openButton.setAttribute("aria-expanded", String(open));
       document.body.classList.toggle("drawer-open", open);
+      if (!open) openButton.focus();
     };
     openButton.addEventListener("click", () => setOpen(true));
     closeButtons.forEach((button) => button.addEventListener("click", () => setOpen(false)));
@@ -221,37 +210,6 @@
     }));
   })();
 
-  (() => {
-    const modal = document.querySelector("#login-benefits-modal");
-    const inviteSeenKey = "newsflow-login-invite-seen";
-    let automaticInviteTimer = null;
-    const rememberInvite = () => {
-      try { window.localStorage.setItem(inviteSeenKey, "1"); } catch (error) {}
-    };
-    document.querySelectorAll("[data-login-modal-open]").forEach((button) => {
-      button.addEventListener("click", () => {
-        window.clearTimeout(automaticInviteTimer);
-        rememberInvite();
-        modal.showModal();
-      });
-    });
-    modal.querySelector("[data-login-modal-close]").addEventListener("click", () => modal.close());
-    modal.addEventListener("click", (event) => {
-      if (event.target === modal) modal.close();
-    });
-    {% if request.path == "/" %}
-    try {
-      if (!window.localStorage.getItem(inviteSeenKey)) {
-        automaticInviteTimer = window.setTimeout(() => {
-          rememberInvite();
-          if (!modal.open) modal.showModal();
-        }, 10000);
-      }
-    } catch (error) {
-      // Browserele care blochează stocarea păstrează deschiderea manuală disponibilă.
-    }
-    {% endif %}
-  })();
   {% endif %}
 
   {% if user.is_authenticated %}

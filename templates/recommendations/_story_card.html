@@ -74,6 +74,9 @@
           <i data-lucide="external-link" aria-hidden="true"></i>
         </a>
       {% else %}
+        <a class="icon-button" href="{% url 'register' %}?next={{ request.get_full_path|urlencode }}" data-login-modal-open data-benefit-message="Creează un cont gratuit pentru a salva această știre și pentru a reveni la ea mai târziu." aria-label="{% translate 'Salvează' %}" title="{% translate 'Salvează' %}">
+          <i data-lucide="bookmark" aria-hidden="true"></i>
+        </a>
         <a class="icon-button" href="{{ article.canonical_url }}" target="_blank" rel="noopener" aria-label="{% translate 'Deschide articolul original într-un tab nou' %}" title="{% translate 'Deschide articolul original într-un tab nou' %}">
           <i data-lucide="external-link" aria-hidden="true"></i>
         </a>

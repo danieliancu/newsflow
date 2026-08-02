@@ -173,6 +173,31 @@ class EmailTwoFactorTests(TestCase):
         self.assertTrue(new_user.is_active)
         self.assertEqual(int(self.client.session["_auth_user_id"]), new_user.pk)
 
+    def test_registration_preserves_safe_filtered_next(self):
+        next_url = "/?categories=economie&topic=taxe"
+        get_response = self.client.get(reverse("register"), {"next": next_url})
+        self.assertContains(get_response, f'value="{next_url.replace("&", "&amp;")}"')
+
+        response = self.client.post(
+            reverse("register"),
+            {
+                "email": "filtre@example.ro",
+                "password1": self.password,
+                "password2": self.password,
+                "next": next_url,
+            },
+        )
+        self.assertRedirects(response, reverse("email_challenge_pending"))
+        self.assertEqual(EmailChallenge.objects.get().next_url, next_url)
+        self.assertRedirects(self.client.get(self._verification_path()), next_url)
+
+    def test_registration_rejects_external_next(self):
+        response = self.client.get(
+            reverse("register"), {"next": "https://evil.example/phishing"}
+        )
+        self.assertEqual(response.context["next"], "")
+        self.assertNotContains(response, 'name="next" value="https://evil.example/phishing"')
+
     def test_resend_obeys_cooldown_and_invalidates_previous_link(self):
         self._login_request()
         first_path = self._verification_path()

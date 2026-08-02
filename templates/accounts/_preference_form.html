@@ -97,25 +97,50 @@
       </details>
 
     {% else %}
-      <section class="filter-section public-source-filter">
-        {% for source in preference_sources %}
-          <label class="check-row">
-            <input type="checkbox" name="preferred_sources" value="{{ source.id }}" {% if source.id in selected_source_ids %}checked{% endif %}>
-            <span>{{ source.name }}</span>
-          </label>
-        {% empty %}<p class="muted">{% translate "Nu există surse configurate." %}</p>{% endfor %}
-      </section>
+      <details class="filter-section preference-group guest-filter-section">
+        <summary><input type="checkbox" data-guest-group-indicator aria-label="{% translate 'Publicații selectate' %}" {% if has_selected_sources %}checked{% endif %}><span>{% translate "Publicații preferate" %}</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+        <div class="preference-group-options">
+          {% for source in preference_sources %}<label class="check-row"><input type="checkbox" name="preferred_sources" value="{{ source.id }}" {% if source.id in selected_source_ids %}checked{% endif %}><span>{{ source.name }}</span></label>{% empty %}<p class="muted">{% translate "Nu există publicații configurate." %}</p>{% endfor %}
+        </div>
+      </details>
+      <details class="filter-section preference-group preference-group--blocked guest-filter-section guest-account-feature">
+        <summary><input type="checkbox" data-guest-locked-indicator aria-label="{% translate 'Publicații ascunse disponibile cu un cont gratuit' %}"><span>{% translate "Publicații ascunse" %}</span><a class="free-account-badge" href="{% url 'register' %}?next={{ guest_auth_next|urlencode }}" data-login-modal-open data-benefit-message="Creează un cont gratuit pentru a ascunde publicațiile care nu te interesează.">{% translate "Cont gratuit" %}</a><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+        <div class="preference-group-options"><a class="guest-locked-action" href="{% url 'register' %}?next={{ guest_auth_next|urlencode }}" data-login-modal-open data-benefit-message="Creează un cont gratuit pentru a ascunde publicațiile care nu te interesează."><i data-lucide="eye-off" aria-hidden="true"></i>{% translate "Alege publicațiile de ascuns" %}</a></div>
+      </details>
+      <details class="filter-section preference-group guest-filter-section">
+        <summary><input type="checkbox" data-guest-group-indicator aria-label="{% translate 'Categorii selectate' %}" {% if has_selected_categories %}checked{% endif %}><span>{% translate "Categorii urmărite" %}</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+        <div class="preference-group-options">
+          {% for category in preference_categories %}<label class="check-row"><input type="checkbox" name="categories" value="{{ category.slug }}" {% if category.slug in selected_category_slugs %}checked{% endif %}><span>{{ category.name }}</span></label>{% empty %}<p class="muted">{% translate "Nu există categorii configurate." %}</p>{% endfor %}
+        </div>
+      </details>
+      <details class="filter-section preference-group guest-filter-section guest-account-feature">
+        <summary><input type="checkbox" data-guest-group-indicator aria-label="{% translate 'Subiect selectat' %}" {% if has_selected_topics %}checked{% endif %}><span>{% translate "Subiecte urmărite" %}</span><a class="free-account-badge" href="{% url 'register' %}?next={{ guest_auth_next|urlencode }}" data-login-modal-open data-benefit-message="Creează un cont gratuit pentru a urmări mai multe subiecte și pentru a păstra fluxul personalizat.">{% translate "Cont gratuit" %}</a><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+        <div class="preference-group-options guest-topic-options" data-guest-topic-options>
+          {% for topic in preference_topics %}<label class="check-row"><input type="checkbox" name="topic" value="{{ topic.slug }}" {% if topic.id in selected_topic_ids %}checked{% endif %} data-guest-topic><span>{{ topic.name }} <small>{{ topic.category.name }}</small></span></label>{% empty %}<p class="muted">{% translate "Nu există subiecte configurate." %}</p>{% endfor %}
+        </div>
+      </details>
+      <details class="filter-section preference-group guest-filter-section guest-account-feature guest-term-preview">
+        <summary><input type="checkbox" data-guest-locked-indicator aria-label="{% translate 'Termeni urmăriți disponibili cu un cont gratuit' %}"><span>{% translate "Termeni urmăriți" %}</span><a class="free-account-badge" href="{% url 'register' %}?next={{ guest_auth_next|urlencode }}" data-login-modal-open data-benefit-message="Creează un cont gratuit pentru a urmări termeni și pentru a vedea știrile relevante într-un singur flux.">{% translate "Cont gratuit" %}</a><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+        <div class="preference-group-options">
+          <div class="followed-term-entry">
+            <input type="text" data-guest-term-input minlength="3" maxlength="80" aria-label="{% translate 'Urmărește un termen' %}" placeholder="{% translate 'Ex.: taxe, OpenAI, pensii' %}" autocomplete="off">
+            <a class="guest-term-add" href="{% url 'register' %}?next={{ guest_auth_next|urlencode }}" data-guest-term-add aria-label="{% translate 'Urmărește termenul' %}">+</a>
+          </div>
+        </div>
+      </details>
     {% endif %}
   </div>
 
   <button class="button filters-submit" type="submit">
-    {% if user.is_authenticated %}{% translate "Aplică preferințele" %}{% else %}{% translate "Filtrează revista presei" %}{% endif %}
+    {% if user.is_authenticated %}{% translate "Aplică preferințele" %}{% else %}{% translate "Aplică filtrele" %}{% endif %}
   </button>
   {% if not user.is_authenticated %}
-    <button class="guest-login-invite" type="button" data-login-modal-open>
-      <i data-lucide="user-round" aria-hidden="true"></i>
-      <span>{% translate "Salvează preferințele într-un cont" %}</span>
-    </button>
+    <section class="guest-conversion-card">
+      <h3>{% translate "Transformă Newsflow în fluxul tău personal" %}</h3>
+      <p>{% translate "Urmărește subiecte și termeni, ascunde publicațiile și păstrează preferințele pe toate dispozitivele." %}</p>
+      <a class="button guest-login-invite" href="{% url 'register' %}?next={{ guest_auth_next|urlencode }}" data-login-modal-open data-benefit-message="Explorează fără cont. Personalizează și păstrează cu un cont gratuit.">{% translate "Creează fluxul meu personalizat" %}</a>
+      <a class="guest-login-link" href="{% url 'login' %}?next={{ guest_auth_next|urlencode }}">{% translate "Am deja cont" %}</a>
+    </section>
   {% endif %}
 </form>
 {% if user.is_authenticated %}

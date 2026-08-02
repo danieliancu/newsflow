@@ -1,0 +1,19 @@
+{% load i18n %}
+<dialog class="login-benefits-modal" id="login-benefits-modal" aria-labelledby="login-benefits-title" aria-describedby="login-benefits-description">
+  <button class="login-modal-close" type="button" data-login-modal-close aria-label="{% translate 'Închide' %}">×</button>
+  <span class="login-modal-icon" aria-hidden="true"><i data-lucide="user-round-check"></i></span>
+  <p class="eyebrow">{% translate "CONT GRATUIT" %}</p>
+  <h2 id="login-benefits-title">{% translate "Construiește fluxul tău personalizat" %}</h2>
+  <p id="login-benefits-description" data-login-modal-message>{% translate "Creează un cont gratuit pentru ca Newsflow să urmărească subiectele și publicațiile care contează pentru tine." %}</p>
+  <ul>
+    <li><i data-lucide="check"></i><span>{% translate "Urmărești mai multe subiecte și termeni" %}</span></li>
+    <li><i data-lucide="check"></i><span>{% translate "Ascunzi publicațiile care nu te interesează" %}</span></li>
+    <li><i data-lucide="check"></i><span>{% translate "Salvezi știri și subiecte" %}</span></li>
+    <li><i data-lucide="check"></i><span>{% translate "Vezi ce este nou de la ultima vizită" %}</span></li>
+    <li><i data-lucide="check"></i><span>{% translate "Păstrezi preferințele pe toate dispozitivele" %}</span></li>
+  </ul>
+  <div class="login-modal-actions">
+    <a class="button" href="{% url 'register' %}?next={{ request.get_full_path|urlencode }}" data-login-register>{% translate "Creează cont gratuit" %}</a>
+    <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}">{% translate "Am deja cont" %}</a>
+  </div>
+</dialog>

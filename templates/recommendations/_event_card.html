@@ -11,7 +11,11 @@
     <div class="event-card-meta">
       <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse distincte" %}</span>
       <span class="event-card-meta-separator" aria-hidden="true">•</span>
-      <span>{% translate "Actualizat" %} {{ event.last_generated_at|date:"H:i" }}</span>
+      {% if event.first_generated_at and event.last_generated_at and event.last_generated_at != event.first_generated_at %}
+        <span>{% translate "Actualizat" %} {{ event.last_generated_at|date:"H:i" }}</span>
+      {% else %}
+        <span>{% translate "Publicat" %} {{ event.first_generated_at|default:event.last_generated_at|date:"H:i" }}</span>
+      {% endif %}
     </div>
     {% if user.is_authenticated %}
       <form method="post" action="{% url 'toggle_saved_event' event.id %}"{% if saved_page %} data-remove-on-unsave="true"{% endif %}>
@@ -21,6 +25,8 @@
           <i data-lucide="bookmark" aria-hidden="true"></i>
         </button>
       </form>
+    {% else %}
+      <a class="icon-button" href="{% url 'register' %}?next={{ request.get_full_path|urlencode }}" data-login-modal-open data-benefit-message="Creează un cont gratuit pentru a salva acest subiect și actualizările lui." aria-label="{% translate 'Salvează subiectul' %}" title="{% translate 'Salvează subiectul' %}"><i data-lucide="bookmark" aria-hidden="true"></i></a>
     {% endif %}
   </footer>
 </article>

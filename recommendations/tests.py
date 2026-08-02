@@ -10,7 +10,7 @@ from accounts.models import CategoryPreference, FollowedTerm, SourcePreference, 
 from news.models import Article, ArticleTopic, Event, EventArticle, RefreshRun, Source
 from taxonomy.models import Category, Topic
 
-from .models import Interaction, Recommendation, SavedEvent
+from .models import Interaction, OpenedEvent, Recommendation, SavedEvent
 from .services import ranked_feed
 
 
@@ -494,6 +494,31 @@ class FeedInterfaceTests(TestCase):
         self.assertEqual(latest.context["feed_mode"], "latest")
         self.assertEqual(latest.context["new_articles_count"], 1)
 
+    def test_authenticated_feed_remembers_last_selected_mode(self):
+        latest = self.client.get("/?view=latest")
+        self.user.refresh_from_db()
+
+        self.assertEqual(latest.context["feed_mode"], "latest")
+        self.assertEqual(self.user.feed_mode, "latest")
+        self.assertEqual(self.client.get("/").context["feed_mode"], "latest")
+
+        for_you = self.client.get("/?view=for-you")
+        self.user.refresh_from_db()
+
+        self.assertEqual(for_you.context["feed_mode"], "for-you")
+        self.assertEqual(self.user.feed_mode, "for-you")
+        self.assertEqual(self.client.get("/").context["feed_mode"], "for-you")
+
+    def test_invalid_feed_mode_does_not_replace_saved_mode(self):
+        self.user.feed_mode = "latest"
+        self.user.save(update_fields=["feed_mode"])
+
+        response = self.client.get("/?view=invalid")
+        self.user.refresh_from_db()
+
+        self.assertEqual(response.context["feed_mode"], "latest")
+        self.assertEqual(self.user.feed_mode, "latest")
+
     def test_recently_read_uses_last_open_time(self):
         other = Article.objects.create(
             source=self.source,
@@ -508,6 +533,55 @@ class FeedInterfaceTests(TestCase):
         response = self.client.get("/recently-read/")
 
         self.assertEqual(response.context["articles"][0], self.article)
+
+    def test_recently_read_includes_opened_events_by_last_open_time(self):
+        older_event = Event.objects.create(
+            title="Subiect deschis anterior",
+            status=Event.Status.INDEXABLE,
+            summary="Primul subiect deschis.",
+            generated_source_count=3,
+            first_generated_at=timezone.now(),
+            last_generated_at=timezone.now(),
+        )
+        newer_event = Event.objects.create(
+            title="Subiect deschis recent",
+            status=Event.Status.INDEXABLE,
+            summary="Al doilea subiect deschis.",
+            generated_source_count=3,
+            first_generated_at=timezone.now(),
+            last_generated_at=timezone.now(),
+        )
+
+        self.client.get(older_event.public_path)
+        self.client.get(newer_event.public_path)
+        self.client.get(older_event.public_path)
+        response = self.client.get("/recently-read/")
+
+        self.assertEqual(response.context["events"], [older_event, newer_event])
+        self.assertContains(response, "Subiectele zilei")
+        self.assertContains(response, older_event.title)
+        self.assertEqual(OpenedEvent.objects.filter(user=self.user).count(), 2)
+
+    def test_event_card_uses_published_until_event_is_updated(self):
+        generated_at = timezone.now()
+        event = Event.objects.create(
+            title="Subiect cu etichetă temporală",
+            status=Event.Status.INDEXABLE,
+            summary="Subiect pentru card.",
+            generated_source_count=3,
+            first_generated_at=generated_at,
+            last_generated_at=generated_at,
+        )
+
+        published = self.client.get("/evenimente/")
+        self.assertContains(published, "Publicat")
+        self.assertNotContains(published, "Actualizat")
+
+        event.last_generated_at = generated_at + timedelta(minutes=5)
+        event.save(update_fields=["last_generated_at"])
+        updated = self.client.get("/evenimente/")
+
+        self.assertContains(updated, "Actualizat")
 
     def test_saved_page_and_navigation_count(self):
         Interaction.objects.create(
@@ -653,6 +727,12 @@ class AnonymousFeedFilterTests(TestCase):
     def setUp(self):
         self.category = Category.objects.create(name="Economie", slug="economie-anon")
         self.other_category = Category.objects.create(name="Sport", slug="sport-anon")
+        self.topic = Topic.objects.create(
+            category=self.category, name="Taxe", slug="taxe-anon"
+        )
+        self.other_topic = Topic.objects.create(
+            category=self.other_category, name="Fotbal", slug="fotbal-anon"
+        )
         self.source = Source.objects.create(
             name="Sursa anonimă", domain="anon.ro", feed_url="https://anon.ro/rss"
         )
@@ -670,6 +750,8 @@ class AnonymousFeedFilterTests(TestCase):
             primary_category=self.other_category,
             processing_status=Article.ProcessingStatus.PROCESSED,
         )
+        ArticleTopic.objects.create(article=self.matching_article, topic=self.topic, score=5)
+        ArticleTopic.objects.create(article=self.other_article, topic=self.other_topic, score=5)
 
     def test_anonymous_feed_displays_temporary_filters(self):
         response = self.client.get("/")
@@ -678,22 +760,26 @@ class AnonymousFeedFilterTests(TestCase):
         for path in ["/about/", "/terms/", "/privacy/", "/cookies/", "/contact/"]:
             self.assertContains(response, f'href="{path}"')
         self.assertNotContains(response, "Filtrele nu se salvează.")
-        self.assertContains(response, "Filtrează revista presei", count=2)
-        self.assertNotContains(response, "data-preference-group")
-        self.assertContains(
-            response,
-            '<section class="filter-section public-source-filter">',
-            count=2,
-        )
+        self.assertContains(response, "Aplică filtrele", count=2)
+        for label in (
+            "Publicații preferate", "Publicații ascunse", "Categorii urmărite",
+            "Subiecte urmărite", "Termeni urmăriți",
+        ):
+            self.assertContains(response, label)
+        self.assertContains(response, "Cont gratuit", count=6)
         self.assertContains(response, 'id="login-benefits-modal"')
-        self.assertContains(
-            response,
-            '<button class="guest-login-invite"',
-            count=2,
-        )
+        self.assertContains(response, "Creează fluxul meu personalizat", count=2)
+        self.assertContains(response, "Transformă Newsflow în fluxul tău personal", count=2)
+        self.assertNotContains(response, "Transformă GRATUIT Newsflow în fluxul tău personal")
+        self.assertContains(response, "Am deja cont", count=3)
         self.assertContains(response, "Creează cont gratuit")
-        self.assertContains(response, "newsflow-login-invite-seen")
-        self.assertContains(response, "modal.showModal();")
+        self.assertNotContains(response, "Salvează preferințele într-un cont")
+        self.assertNotContains(response, "Gratuit. Preferințele tale vor fi disponibile pe orice dispozitiv.")
+        self.assertNotContains(response, '<details class="filter-section preference-group guest-filter-section" open>')
+        self.assertNotContains(response, "newsflow-login-invite-seen")
+        self.assertNotContains(response, "10000")
+        self.assertContains(response, "guest-personalization.js")
+        self.assertContains(response, 'data-login-modal-open')
 
     def test_anonymous_filter_hides_categories_without_articles(self):
         empty_category = Category.objects.create(name="Cultură", slug="cultura-anon")
@@ -702,8 +788,11 @@ class AnonymousFeedFilterTests(TestCase):
 
     def test_anonymous_category_filter_limits_articles_without_saving(self):
         response = self.client.get("/", {"categories": self.category.slug})
-        self.assertEqual(response.status_code, 301)
-        self.assertEqual(response["Location"], f"/category/{self.category.slug}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.matching_article, response.context["articles"])
+        self.assertNotIn(self.other_article, response.context["articles"])
+        self.assertContains(response, '<meta name="robots" content="noindex,follow">', html=True)
+        self.assertEqual(response.context["canonical_url"], "http://127.0.0.1:8000/")
 
     def test_technical_pages_are_separate_and_render_the_shared_footer(self):
         pages = {
@@ -723,8 +812,92 @@ class AnonymousFeedFilterTests(TestCase):
                 self.assertContains(response, 'class="site-footer"')
     def test_numeric_category_url_permanently_redirects_to_slug(self):
         response = self.client.get("/", {"categories": self.category.pk})
-        self.assertEqual(response.status_code, 301)
-        self.assertEqual(response["Location"], f"/category/{self.category.slug}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context["selected_category_ids"])
+
+    def test_guest_filters_multiple_sources_and_combines_dimensions(self):
+        other_source = Source.objects.create(
+            name="Altă sursă", domain="alta-anon.ro", feed_url="https://alta-anon.ro/rss"
+        )
+        combined = Article.objects.create(
+            source=other_source,
+            canonical_url="https://alta-anon.ro/taxe",
+            title="Taxe din altă sursă",
+            primary_category=self.category,
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        ArticleTopic.objects.create(article=combined, topic=self.topic, score=5)
+
+        sources = self.client.get(
+            "/", {"preferred_sources": [self.source.pk, other_source.pk]}
+        )
+        combined_filter = self.client.get(
+            "/",
+            {
+                "preferred_sources": other_source.pk,
+                "categories": self.category.slug,
+                "topic": self.topic.slug,
+            },
+        )
+
+        self.assertIn(self.matching_article, sources.context["articles"])
+        self.assertIn(combined, sources.context["articles"])
+        self.assertEqual(combined_filter.context["articles"], [combined])
+
+    def test_guest_topic_is_validated_and_limited_to_first_active_topic(self):
+        inactive = Topic.objects.create(
+            category=self.category, name="Inactiv", slug="inactiv-anon", is_active=False
+        )
+        valid = self.client.get("/", {"topic": self.topic.slug})
+        multiple = self.client.get(
+            "/", [("topic", self.topic.slug), ("topic", self.other_topic.slug)]
+        )
+        invalid = self.client.get("/", {"topic": "nu-exista"})
+        inactive_response = self.client.get("/", {"topic": inactive.slug})
+
+        self.assertEqual(valid.context["articles"], [self.matching_article])
+        self.assertEqual(multiple.context["articles"], [self.matching_article])
+        self.assertEqual(multiple.context["selected_topic_ids"], {self.topic.pk})
+        self.assertIsNone(invalid.context["selected_guest_topic"])
+        self.assertIsNone(inactive_response.context["selected_guest_topic"])
+        self.assertContains(valid, "Urmărești temporar")
+        self.assertContains(valid, "Păstrează acest subiect")
+
+    def test_guest_filters_do_not_create_persistent_preferences(self):
+        self.client.get(
+            "/",
+            {
+                "preferred_sources": self.source.pk,
+                "categories": self.category.slug,
+                "topic": self.topic.slug,
+            },
+        )
+        self.assertFalse(CategoryPreference.objects.exists())
+        self.assertFalse(SourcePreference.objects.exists())
+        self.assertFalse(TopicPreference.objects.exists())
+        self.assertFalse(FollowedTerm.objects.exists())
+        self.assertFalse(Interaction.objects.exists())
+
+    def test_guest_save_actions_use_contextual_modal_with_register_fallback(self):
+        event = Event.objects.create(
+            title="Subiect public pentru guest",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză publică.",
+            generated_source_count=3,
+            first_generated_at=timezone.now(),
+            last_generated_at=timezone.now(),
+        )
+        EventArticle.objects.create(event=event, article=self.matching_article)
+
+        feed = self.client.get("/")
+        event_page = self.client.get(event.public_path)
+
+        self.assertContains(feed, "Creează un cont gratuit pentru a salva această știre")
+        self.assertContains(event_page, "Creează un cont gratuit pentru a salva acest subiect")
+        self.assertContains(feed, 'href="/account/register/?next=')
+        self.assertContains(event_page, 'data-login-modal-open')
+        self.assertFalse(Interaction.objects.exists())
+        self.assertFalse(SavedEvent.objects.exists())
 
     def test_source_filter_is_applied_before_global_feed_limit(self):
         newer_source = Source.objects.create(
@@ -1078,7 +1251,8 @@ class SeoArchiveTests(TestCase):
         self.assertNotContains(response, "Subiectul de ieri")
         self.assertContains(response, 'class="event-archive-card"')
         self.assertContains(response, "surse distincte")
-        self.assertContains(response, "Actualizat")
+        self.assertContains(response, "Publicat")
+        self.assertNotContains(response, "Actualizat")
 
     def test_filter_combinations_are_noindex(self):
         response = self.client.get(

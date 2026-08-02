@@ -6,13 +6,29 @@
 <header class="intro saved-intro">
   <p class="eyebrow">{% translate "ISTORICUL TĂU" %}</p>
   <h1>{% translate "Citite recent" %}</h1>
-  <p>{% translate "Articolele sunt ordonate după ultima deschidere." %}</p>
+  <p>{% translate "Articolele și subiectele sunt ordonate după ultima deschidere." %}</p>
 </header>
-<div class="feed saved-feed">
-  {% for article in articles %}
-    {% include "recommendations/_story_card.html" %}
-  {% empty %}
-    <section class="empty"><h2>{% translate "Nu ai citit încă articole." %}</h2></section>
-  {% endfor %}
-</div>
+{% if events %}
+  <section class="saved-content-section recently-read-events">
+    <h2>{% translate "Subiectele zilei" %}</h2>
+    <div class="events-page-grid">
+      {% for event in events %}
+        {% include "recommendations/_event_card.html" %}
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+{% if articles %}
+  <section class="saved-content-section recently-read-articles">
+    <h2>{% translate "Articole" %}</h2>
+    <div class="feed saved-feed">
+      {% for article in articles %}
+        {% include "recommendations/_story_card.html" %}
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+{% if not events and not articles %}
+  <section class="empty"><h2>{% translate "Nu ai deschis încă articole sau subiecte." %}</h2></section>
+{% endif %}
 {% endblock %}

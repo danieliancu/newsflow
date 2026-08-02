@@ -29,6 +29,10 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
+    class FeedMode(models.TextChoices):
+        FOR_YOU = "for-you", "Pentru tine"
+        LATEST = "latest", "Cele mai noi"
+
     class FeedDisplayMode(models.TextChoices):
         CARDS = "cards", "Carduri"
         COMPACT = "compact", "Compact"
@@ -36,6 +40,11 @@ class User(AbstractUser):
     username = None
     email = models.EmailField("email", unique=True)
     last_feed_seen_at = models.DateTimeField(null=True, blank=True)
+    feed_mode = models.CharField(
+        max_length=10,
+        choices=FeedMode.choices,
+        default=FeedMode.FOR_YOU,
+    )
     feed_display_mode = models.CharField(
         max_length=10,
         choices=FeedDisplayMode.choices,

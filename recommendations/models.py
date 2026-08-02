@@ -61,3 +61,26 @@ class SavedEvent(models.Model):
                 fields=["user", "event"], name="unique_user_saved_event"
             )
         ]
+
+
+class OpenedEvent(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="opened_events",
+    )
+    event = models.ForeignKey(
+        "news.Event",
+        on_delete=models.CASCADE,
+        related_name="opened_by",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ("-updated_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "event"], name="unique_user_opened_event"
+            )
+        ]

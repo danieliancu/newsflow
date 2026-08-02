@@ -42,7 +42,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/newsflow.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'css/newsflow.css' %}?v=4">
 </head>
 <body>
   <div class="site-navigation-shell">
@@ -147,6 +147,7 @@
       <span class="footer-copyright">© {% now "Y" %} Newsflow</span>
     </div>
   </footer>
+  {% if not user.is_authenticated %}{% include "recommendations/_login_benefits_modal.html" %}{% endif %}
   {% if user.is_authenticated %}
     <dialog class="logout-confirmation-modal" data-logout-modal aria-labelledby="logout-modal-title">
       <span class="logout-modal-icon" aria-hidden="true"><i data-lucide="log-out"></i></span>
@@ -162,6 +163,7 @@
     <button type="button" data-toast-undo hidden>{% translate "Anulează" %}</button>
   </div>
   <script src="{% static 'vendor/lucide/lucide.min.js' %}"></script>
+  {% if not user.is_authenticated %}<script src="{% static 'js/guest-personalization.js' %}"></script>{% endif %}
   <script>
     lucide.createIcons();
     const logoutModal = document.querySelector("[data-logout-modal]");

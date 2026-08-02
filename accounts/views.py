@@ -26,7 +26,7 @@ from .two_factor import (
     token_hash,
 )
 from news.models import Article, Source
-from recommendations.models import Interaction, SavedEvent
+from recommendations.models import Interaction, OpenedEvent, SavedEvent
 from taxonomy.models import Category, Topic
 
 
@@ -43,7 +43,8 @@ def account_dashboard(request):
             ).count(),
             "recent_count": request.user.interactions.filter(
                 kind=Interaction.Kind.OPENED
-            ).count(),
+            ).count()
+            + OpenedEvent.objects.filter(user=request.user).count(),
             "hidden_count": request.user.interactions.filter(
                 kind=Interaction.Kind.HIDDEN
             ).count()
@@ -130,14 +131,19 @@ def register(request):
     if request.user.is_authenticated:
         return redirect("feed")
     form = RegistrationForm(request.POST or None)
+    next_url = _safe_next_url(
+        request,
+        request.POST.get("next", "") if request.method == "POST" else request.GET.get("next", ""),
+    )
     if request.method == "POST" and form.is_valid():
         user = form.save(commit=False)
         user.is_active = False
         user.save()
-        _set_pending_challenge(request, user, EmailChallenge.Purpose.REGISTRATION, "preferences")
-        _send_pending_challenge(request, user, EmailChallenge.Purpose.REGISTRATION, "preferences")
+        destination = next_url or "preferences"
+        _set_pending_challenge(request, user, EmailChallenge.Purpose.REGISTRATION, destination)
+        _send_pending_challenge(request, user, EmailChallenge.Purpose.REGISTRATION, destination)
         return redirect("email_challenge_pending")
-    return render(request, "accounts/register.html", {"form": form})
+    return render(request, "accounts/register.html", {"form": form, "next": next_url})
 
 
 def login_view(request):

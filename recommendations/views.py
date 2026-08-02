@@ -1,6 +1,7 @@
 import json
 import re
 import unicodedata
+from urllib.parse import urlencode
 from copy import deepcopy
 from datetime import date, timedelta
 from urllib.parse import urljoin
@@ -30,7 +31,7 @@ from news.services import ingest_source
 from news.jobs import enqueue_refresh
 from taxonomy.models import Category, Topic
 
-from .models import Interaction, SavedEvent
+from .models import Interaction, OpenedEvent, SavedEvent
 from .services import ranked_feed
 from .technical_content import TECHNICAL_PAGES as TECHNICAL_PAGE_CONTENT
 
@@ -578,6 +579,12 @@ def event_detail(request, slug):
             Event.Status.STABLE,
         ],
     )
+    if request.user.is_authenticated:
+        opened_event, _ = OpenedEvent.objects.get_or_create(
+            user=request.user,
+            event=event,
+        )
+        OpenedEvent.objects.filter(pk=opened_event.pk).update(updated_at=timezone.now())
     articles = list(
         event.articles.select_related("source", "primary_category").order_by(
             "published_at", "collected_at"
@@ -712,7 +719,7 @@ def event_detail(request, slug):
 def feed(request):
     raw_categories = request.GET.getlist("categories")
     filter_keys = set(request.GET) - {"page"}
-    if len(raw_categories) == 1 and filter_keys == {"categories"}:
+    if request.user.is_authenticated and len(raw_categories) == 1 and filter_keys == {"categories"}:
         value = raw_categories[0]
         category = (
             Category.objects.filter(pk=int(value)).first()
@@ -729,6 +736,8 @@ def feed(request):
     selected_category_ids = set()
     selected_category_slugs = set()
     selected_source_ids = set()
+    selected_topic_ids = set()
+    selected_topic = None
     if not request.user.is_authenticated:
         requested_category_slugs = [
             value for value in request.GET.getlist("categories") if value
@@ -746,17 +755,29 @@ def feed(request):
                 is_active=True, pk__in=requested_source_ids
             ).values_list("pk", flat=True)
         )
-    feed_mode = (
-        request.GET.get("view", "for-you")
-        if request.user.is_authenticated
-        else "latest"
-    )
-    if feed_mode not in {"for-you", "latest"}:
-        feed_mode = "for-you"
+        for topic_slug in request.GET.getlist("topic"):
+            selected_topic = Topic.objects.filter(
+                is_active=True, slug=topic_slug
+            ).first()
+            if selected_topic:
+                selected_topic_ids = {selected_topic.pk}
+                break
+    if request.user.is_authenticated:
+        requested_feed_mode = request.GET.get("view")
+        if requested_feed_mode in {"for-you", "latest"}:
+            feed_mode = requested_feed_mode
+            if request.user.feed_mode != feed_mode:
+                request.user.feed_mode = feed_mode
+                request.user.save(update_fields=["feed_mode", "updated_at"])
+        else:
+            feed_mode = request.user.feed_mode
+    else:
+        feed_mode = "latest"
     articles = ranked_feed(
         request.user,
         category_ids=selected_category_ids,
         source_ids=selected_source_ids,
+        topic_ids=selected_topic_ids,
         personalized=feed_mode == "for-you",
     )
     other_articles = []
@@ -846,6 +867,18 @@ def feed(request):
     if request.user.is_authenticated:
         context.update(preference_context(PreferenceForm(user=request.user)))
     else:
+        normalized_filters = []
+        normalized_filters.extend(
+            ("categories", slug) for slug in sorted(selected_category_slugs)
+        )
+        normalized_filters.extend(
+            ("preferred_sources", source_id) for source_id in sorted(selected_source_ids)
+        )
+        if selected_topic:
+            normalized_filters.append(("topic", selected_topic.slug))
+        guest_filter_path = reverse("feed")
+        if normalized_filters:
+            guest_filter_path = f"{guest_filter_path}?{urlencode(normalized_filters)}"
         context.update(
             {
                 "preference_categories": available_categories(),
@@ -853,7 +886,16 @@ def feed(request):
                 "selected_category_ids": selected_category_ids,
                 "selected_category_slugs": selected_category_slugs,
                 "selected_source_ids": selected_source_ids,
+                "selected_topic_ids": selected_topic_ids,
+                "selected_guest_topic": selected_topic,
+                "guest_filter_path": guest_filter_path,
+                "guest_auth_next": guest_filter_path,
                 "has_selected_sources": bool(selected_source_ids),
+                "has_selected_categories": bool(selected_category_ids),
+                "has_selected_topics": bool(selected_topic_ids),
+                "preference_topics": Topic.objects.filter(is_active=True)
+                .select_related("category")
+                .order_by("category__name", "name"),
             }
         )
     return render(request, "recommendations/feed.html", context)
@@ -1259,10 +1301,31 @@ def recently_read(request):
         for article_id in opened_ids
         if article_id in articles_by_id
     ]
+    opened_event_ids = list(
+        request.user.opened_events.order_by("-updated_at").values_list(
+            "event_id", flat=True
+        )
+    )
+    events_by_id = {
+        event.pk: event
+        for event in _with_representative_images(
+            _public_events().filter(pk__in=opened_event_ids)
+        )
+    }
+    events = [
+        events_by_id[event_id]
+        for event_id in opened_event_ids
+        if event_id in events_by_id
+    ]
     return render(
         request,
         "recommendations/recently_read.html",
-        {"articles": articles, "saved_ids": _saved_ids(request)},
+        {
+            "articles": articles,
+            "events": events,
+            "saved_ids": _saved_ids(request),
+            "saved_event_ids": _saved_event_ids(request),
+        },
     )
 
 

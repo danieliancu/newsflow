@@ -46,6 +46,7 @@ def ranked_feed(
     limit=50,
     category_ids=None,
     source_ids=None,
+    topic_ids=None,
     personalized=True,
 ):
     articles = Article.objects.filter(
@@ -59,7 +60,9 @@ def ranked_feed(
             articles = articles.filter(primary_category_id__in=category_ids)
         if source_ids:
             articles = articles.filter(source_id__in=source_ids)
-        return list(articles.order_by("-published_at", "-collected_at")[:limit])
+        if topic_ids:
+            articles = articles.filter(topic_matches__topic_id__in=topic_ids)
+        return list(articles.distinct().order_by("-published_at", "-collected_at")[:limit])
 
     blocked_source_ids = set(
         user.source_preferences.filter(is_blocked=True).values_list("source_id", flat=True)
