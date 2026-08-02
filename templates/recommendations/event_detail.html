@@ -18,9 +18,9 @@
         {% translate "De" %} <a href="{% url 'about' %}">{% translate "Redacția Newsflow" %}</a> ·
         {% translate "Publicat" %}
         <time datetime="{{ event.first_generated_at|date:'c' }}">{{ event.first_generated_at|date:"j F Y, H:i" }}</time> ·
-        {% if event.last_generated_at != event.first_generated_at %}
+        {% if event.is_publicly_updated %}
           {% translate "Actualizat" %}
-          <time datetime="{{ event.last_generated_at|date:'c' }}">{{ event.last_generated_at|date:"j F Y, H:i" }}</time> ·
+          <time datetime="{{ event.public_updated_at|date:'c' }}">{{ event.public_updated_at|date:"j F Y, H:i" }}</time> ·
         {% endif %}
         {% translate "Sinteză bazată pe" %}
         {{ event.generated_source_count }} {% translate "surse distincte" %}.

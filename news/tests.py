@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from decimal import Decimal
 from io import StringIO
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -19,6 +20,7 @@ from .event_services import (
 )
 from .models import (
     Article,
+    AIUsage,
     AutomaticUpdateLock,
     Event,
     EventArticle,
@@ -543,7 +545,28 @@ class EventPipelineTests(TestCase):
         self.assertEqual((created, updated), (1, 0))
         event = Event.objects.get()
         self.assertEqual(event.articles.count(), 2)
+        self.assertEqual(event.generated_source_count, 2)
         self.assertEqual(event.status, Event.Status.PENDING)
+
+    def test_synchronizing_new_report_updates_public_source_count_immediately(self):
+        self._duplicate(self.source_b, "prima-relatare")
+        synchronize_events()
+        event = Event.objects.get()
+        generated_at = timezone.now() - timedelta(hours=2)
+        event.first_generated_at = generated_at
+        event.last_generated_at = generated_at
+        event.generated_source_count = 2
+        event.status = Event.Status.INDEXABLE
+        event.save()
+
+        self._duplicate(self.source_c, "relatare-noua")
+        created, updated = synchronize_events()
+
+        event.refresh_from_db()
+        self.assertEqual((created, updated), (0, 1))
+        self.assertEqual(event.generated_source_count, 3)
+        self.assertGreater(event.public_updated_at, event.first_generated_at)
+        self.assertTrue(event.is_publicly_updated)
 
     def test_merges_separate_duplicate_clusters_for_same_story(self):
         self._duplicate(self.source_b, "prima-relatare")
@@ -666,6 +689,25 @@ class EventPipelineTests(TestCase):
         self.assertIn("diferă în mod real", summary_instructions)
         self.assertIn("returnează differences ca listă goală", summary_instructions)
         self.assertIn("3 milioane EUR", summary_instructions)
+        self.assertIn("nu există o lungime minimă", summary_instructions)
+        self.assertIn("Oprește sinteza imediat", summary_instructions)
+        self.assertNotIn("cel puțin 90 de cuvinte", summary_instructions)
+
+    def test_event_summary_removes_meta_filler_sentences(self):
+        from .event_services import remove_summary_filler
+
+        summary = (
+            "Mircea Lucescu a murit pe 7 aprilie 2026, la 80 de ani. "
+            "Nu fusese diagnosticat cu leucemie. "
+            "Informațiile disponibile sunt limitate la aceste elemente, fără alte detalii. "
+            "Declarația reia tema circumstanțelor morții și mută accentul spre diagnostic."
+        )
+
+        self.assertEqual(
+            remove_summary_filler(summary),
+            "Mircea Lucescu a murit pe 7 aprilie 2026, la 80 de ani. "
+            "Nu fusese diagnosticat cu leucemie.",
+        )
 
     def test_event_slug_is_immutable_after_creation(self):
         event = Event.objects.create(title="Titlul inițial")
@@ -883,3 +925,46 @@ class EventPipelineTests(TestCase):
         run = RefreshRun.objects.get()
         self.assertEqual(run.trigger, RefreshRun.Trigger.AUTOMATIC)
         self.assertEqual(run.status, RefreshRun.Status.SKIPPED)
+
+    @patch("news.management.commands.automatic_news_update.synchronize_events")
+    @patch("news.management.commands.automatic_news_update.ingest_source")
+    def test_failed_automatic_run_keeps_completed_work_and_ai_costs(
+        self, ingest_source, synchronize_events
+    ):
+        Source.objects.create(
+            name="Sursa automată",
+            domain="automat.ro",
+            feed_url="https://automat.ro/rss",
+        )
+
+        def record_usage(source, refresh_run):
+            AIUsage.objects.create(
+                refresh_run=refresh_run,
+                usage_type=AIUsage.UsageType.ARTICLE_CLASSIFICATION,
+                model="test-model",
+                input_tokens=100,
+                output_tokens=20,
+                total_tokens=120,
+                total_cost_usd=Decimal("0.02000000"),
+                total_cost_gbp=Decimal("0.01500000"),
+            )
+            return 3
+
+        ingest_source.side_effect = record_usage
+        synchronize_events.side_effect = RuntimeError("event stage failed")
+
+        with self.assertRaisesMessage(RuntimeError, "event stage failed"):
+            call_command("automatic_news_update", force=True, stdout=StringIO())
+
+        run = RefreshRun.objects.get()
+        source_count = Source.objects.filter(is_active=True).count()
+        self.assertEqual(run.status, RefreshRun.Status.FAILED)
+        self.assertEqual(run.sources_succeeded, source_count)
+        self.assertEqual(run.articles_collected, 3 * source_count)
+        self.assertEqual(run.ai_calls, source_count)
+        self.assertEqual(run.input_tokens, 100 * source_count)
+        self.assertEqual(run.output_tokens, 20 * source_count)
+        self.assertEqual(run.cost_gbp, Decimal("0.015000") * source_count)
+        self.assertEqual(
+            run.classification_cost_gbp, Decimal("0.01500000") * source_count
+        )

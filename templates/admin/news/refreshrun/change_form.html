@@ -22,6 +22,14 @@
     <span class="nf-report-status nf-report-status--{{ original.status }}">{{ original.get_status_display }}</span>
   </header>
 
+  {% if original.status == "failed" %}
+    <div class="nf-report-failure" role="alert">
+      <strong>Rularea s-a oprit înainte de finalizare.</strong>
+      <span>{{ original.note|default:"Nu a fost înregistrat un mesaj de eroare." }}</span>
+      <small>Articolele și costurile afișate reprezintă operațiunile finalizate înaintea erorii.</small>
+    </div>
+  {% endif %}
+
   <div class="nf-report-kpis">
     <section class="nf-report-kpi nf-report-kpi--green">
       <span class="nf-report-kpi-icon"><i data-lucide="rss" aria-hidden="true"></i></span>

@@ -282,6 +282,24 @@ class FeedInterfaceTests(TestCase):
         self.assertContains(filtered_response, "data-event-carousel")
         self.assertContains(filtered_response, "Eveniment 0")
 
+    def test_homepage_events_show_updated_date_after_new_public_activity(self):
+        generated_at = timezone.now() - timedelta(hours=2)
+        updated_at = timezone.now() - timedelta(minutes=5)
+        event = Event.objects.create(
+            title="Eveniment actualizat pe homepage",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză publică.",
+            generated_source_count=4,
+            first_generated_at=generated_at,
+            last_generated_at=generated_at,
+            last_article_at=updated_at,
+        )
+
+        response = self.client.get("/")
+
+        self.assertContains(response, event.title)
+        self.assertContains(response, "Actualizat acum 5\xa0minute")
+
 
     def test_archive_lists_only_public_events(self):
         public_event = Event.objects.create(
@@ -583,6 +601,24 @@ class FeedInterfaceTests(TestCase):
 
         self.assertContains(updated, "Actualizat")
 
+    def test_new_report_marks_event_updated_before_summary_regeneration(self):
+        generated_at = timezone.now() - timedelta(hours=2)
+        event = Event.objects.create(
+            title="Subiect cu relatare nouă",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză publică.",
+            generated_source_count=3,
+            first_generated_at=generated_at,
+            last_generated_at=generated_at,
+            last_article_at=timezone.now(),
+        )
+
+        archive = self.client.get("/evenimente/")
+        detail = self.client.get(event.public_path)
+
+        self.assertContains(archive, "Actualizat")
+        self.assertContains(detail, "Actualizat")
+
     def test_saved_page_and_navigation_count(self):
         Interaction.objects.create(
             user=self.user, article=self.article, kind=Interaction.Kind.SAVED
@@ -760,7 +796,7 @@ class AnonymousFeedFilterTests(TestCase):
         for path in ["/about/", "/terms/", "/privacy/", "/cookies/", "/contact/"]:
             self.assertContains(response, f'href="{path}"')
         self.assertNotContains(response, "Filtrele nu se salvează.")
-        self.assertContains(response, "Aplică filtrele", count=2)
+        self.assertContains(response, "Filtrează revista presei", count=2)
         for label in (
             "Publicații preferate", "Publicații ascunse", "Categorii urmărite",
             "Subiecte urmărite", "Termeni urmăriți",

@@ -53,6 +53,33 @@ class Command(BaseCommand):
             acquired_at=None, owner=""
         )
 
+    @staticmethod
+    def _apply_usage_totals(run):
+        usage = run.ai_usage.aggregate(
+            calls=Count("id"),
+            input_tokens=Sum("input_tokens"),
+            output_tokens=Sum("output_tokens"),
+            cost_usd=Sum("total_cost_usd"),
+            cost_gbp=Sum("total_cost_gbp"),
+        )
+        run.ai_calls = usage["calls"] or 0
+        run.input_tokens = usage["input_tokens"] or 0
+        run.output_tokens = usage["output_tokens"] or 0
+        run.cost_usd = usage["cost_usd"] or 0
+        run.cost_gbp = usage["cost_gbp"] or 0
+        run.classification_cost_gbp = (
+            run.ai_usage.filter(
+                usage_type=AIUsage.UsageType.ARTICLE_CLASSIFICATION
+            ).aggregate(value=Sum("total_cost_gbp"))["value"]
+            or 0
+        )
+        run.event_cost_gbp = (
+            run.ai_usage.filter(event__isnull=False).aggregate(
+                value=Sum("total_cost_gbp")
+            )["value"]
+            or 0
+        )
+
     def handle(self, *args, **options):
         schedule = AutomaticUpdateSchedule.get_solo()
         if not options["force"] and not schedule.is_due():
@@ -75,41 +102,26 @@ class Command(BaseCommand):
             return
 
         run = RefreshRun.objects.create(trigger=RefreshRun.Trigger.AUTOMATIC)
+        collected = 0
+        failures = 0
+        sources_completed = 0
         try:
             sources = Source.objects.filter(is_active=True)
             run.sources_attempted = sources.count()
             run.save(update_fields=["sources_attempted"])
-            collected = 0
-            failures = 0
             for source in sources:
                 try:
                     collected += ingest_source(source, refresh_run=run)
                 except Exception:
                     failures += 1
+                finally:
+                    sources_completed += 1
 
             synchronize_events()
             events_created, events_updated, events_blocked = process_event_queue(
                 refresh_run=run
             )
-            usage = run.ai_usage.aggregate(
-                calls=Count("id"),
-                input_tokens=Sum("input_tokens"),
-                output_tokens=Sum("output_tokens"),
-                cost_usd=Sum("total_cost_usd"),
-                cost_gbp=Sum("total_cost_gbp"),
-            )
-            classification_cost = (
-                run.ai_usage.filter(
-                    usage_type=AIUsage.UsageType.ARTICLE_CLASSIFICATION
-                ).aggregate(value=Sum("total_cost_gbp"))["value"]
-                or 0
-            )
-            event_cost = (
-                run.ai_usage.filter(event__isnull=False).aggregate(
-                    value=Sum("total_cost_gbp")
-                )["value"]
-                or 0
-            )
+            self._apply_usage_totals(run)
             run.status = (
                 RefreshRun.Status.PARTIAL if failures else RefreshRun.Status.COMPLETED
             )
@@ -117,13 +129,6 @@ class Command(BaseCommand):
             run.sources_succeeded = run.sources_attempted - failures
             run.sources_failed = failures
             run.articles_collected = collected
-            run.ai_calls = usage["calls"] or 0
-            run.input_tokens = usage["input_tokens"] or 0
-            run.output_tokens = usage["output_tokens"] or 0
-            run.cost_usd = usage["cost_usd"] or 0
-            run.cost_gbp = usage["cost_gbp"] or 0
-            run.classification_cost_gbp = classification_cost
-            run.event_cost_gbp = event_cost
             run.events_created = events_created
             run.events_updated = events_updated
             run.events_budget_blocked = events_blocked
@@ -137,8 +142,12 @@ class Command(BaseCommand):
         except Exception as exc:
             run.status = RefreshRun.Status.FAILED
             run.finished_at = timezone.now()
+            run.sources_succeeded = max(sources_completed - failures, 0)
+            run.sources_failed = failures
+            run.articles_collected = collected
+            self._apply_usage_totals(run)
             run.note = str(exc)[:300]
-            run.save(update_fields=["status", "finished_at", "note"])
+            run.save()
             raise
         finally:
             self._release_lock(owner)

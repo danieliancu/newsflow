@@ -42,7 +42,11 @@
                   <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
                   <footer>
                     <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse" %}</span>
-                    <span>{% translate "Publicat" %} {{ event.first_generated_at|natural_timesince }}</span>
+                    {% if event.is_publicly_updated %}
+                      <span>{% translate "Actualizat" %} {{ event.public_updated_at|natural_timesince }}</span>
+                    {% else %}
+                      <span>{% translate "Publicat" %} {{ event.first_generated_at|natural_timesince }}</span>
+                    {% endif %}
                   </footer>
                 </div>
               </article>
@@ -59,7 +63,11 @@
               <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
               <footer>
                 <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse" %}</span>
-                <span>{% translate "Publicat" %} {{ event.first_generated_at|natural_timesince }}</span>
+                {% if event.is_publicly_updated %}
+                  <span>{% translate "Actualizat" %} {{ event.public_updated_at|natural_timesince }}</span>
+                {% else %}
+                  <span>{% translate "Publicat" %} {{ event.first_generated_at|natural_timesince }}</span>
+                {% endif %}
               </footer>
             </article>
           {% endfor %}

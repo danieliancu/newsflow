@@ -129,12 +129,16 @@ def synchronize_events():
                 article=article, defaults={"event": existing}
             )
         new_count = existing.articles.count()
+        current_source_count = existing.articles.values("source_id").distinct().count()
         if new_count > previous_count and previous_count:
             updated += 1
         existing.last_article_at = latest
+        existing.generated_source_count = current_source_count
         if existing.status in {Event.Status.STABLE, Event.Status.FAILED}:
             existing.status = Event.Status.PENDING
-        existing.save(update_fields=["last_article_at", "status"])
+        existing.save(
+            update_fields=["last_article_at", "generated_source_count", "status"]
+        )
     return created, updated
 
 
@@ -401,6 +405,25 @@ def confirmed_fact_is_subject_focused(fact, sources):
     )
 
 
+SUMMARY_FILLER_PATTERNS = (
+    re.compile(r"^informațiile (?:disponibile|cunoscute|prezentate) (?:sunt|rămân) limitate\b", re.IGNORECASE),
+    re.compile(r"^(?:nu sunt disponibile|nu există|fără) alte detalii\b", re.IGNORECASE),
+    re.compile(r"^(?:sursele|relatările|materialele) (?:disponibile )?(?:nu )?(?:oferă|conțin|precizează)\b", re.IGNORECASE),
+    re.compile(r"^declarația (?:reia|mută accentul|pune accentul)\b", re.IGNORECASE),
+)
+
+
+def remove_summary_filler(text):
+    """Drop meta-commentary about missing material instead of facts about the event."""
+    sentences = re.split(r"(?<=[.!?])\s+", " ".join(str(text or "").split()))
+    kept = [
+        sentence
+        for sentence in sentences
+        if sentence and not any(pattern.search(sentence) for pattern in SUMMARY_FILLER_PATTERNS)
+    ]
+    return " ".join(kept)
+
+
 def _call_extraction(client, event, sources, refresh_run):
     model = settings.OPENAI_EVENT_EXTRACTION_MODEL
     response = client.responses.create(
@@ -528,12 +551,17 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
         store=False,
         instructions=(
             "Redactează în română o sinteză neutră și originală, cu lungimea adaptată "
-            "informațiilor disponibile: 90-120 de cuvinte pentru evenimente cu puține "
-            "informații, 120-170 de cuvinte pentru majoritatea evenimentelor și 180-220 "
-            "de cuvinte pentru subiecte complexe. Dezvoltă contextul, consecințele și "
+            "strict cantității de informație factuală disponibilă. Pentru un eveniment cu "
+            "puține fapte sunt suficiente una până la trei propoziții; nu există o lungime "
+            "minimă. Pentru evenimentele bogate în informații poți ajunge la aproximativ "
+            "170 de cuvinte, iar numai subiectele complexe pot ajunge la 220 de cuvinte. "
+            "Dezvoltă contextul, consecințele și "
             "legăturile dintre fapte atunci când acestea sunt susținute de surse. Urmărește "
-            "cel puțin 90 de cuvinte, dar nu inventa, nu repeta și nu adăuga text de "
-            "umplutură dacă sursele nu oferă suficiente informații relevante. "
+            "densitatea informațională, nu un număr de cuvinte. Oprește sinteza imediat ce "
+            "faptele relevante au fost prezentate; nu inventa, nu repeta și nu adăuga text "
+            "de umplutură. Nu comenta lipsa informațiilor și nu încheia cu formule precum "
+            "«informațiile disponibile sunt limitate», «nu există alte detalii», «sursele nu "
+            "oferă alte informații» sau echivalente. "
             "Titlul trebuie să fie factual, autonom și să aibă maximum 110 caractere. "
             "Folosește exclusiv afirmațiile extrase. Fiecare fapt confirmat trebuie să aibă "
             "minimum două article_ids distincte. Evidențiază separat diferențele dintre surse. "
@@ -727,7 +755,7 @@ def generate_event(event, refresh_run=None):
         ]
         now = timezone.now()
         event.title = result["title"][:110].rstrip()
-        event.summary = result["summary"]
+        event.summary = remove_summary_filler(result["summary"])
         event.confirmed_facts = confirmed
         event.differences = [
             replace_article_references(difference, sources)

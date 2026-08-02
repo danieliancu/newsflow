@@ -1038,6 +1038,7 @@ fieldset ul { list-style: none; padding: 0; }
 .event-share-button:hover { border-color: var(--accent); background: #e7f2ed; }
 .event-detail-actions { display: flex; align-items: center; justify-content: flex-end; gap: .55rem; }
 .event-save-form { display: inline-flex; margin: 0; }
+.event-save-action, .event-save-action:hover { text-decoration: none; }
 .event-save-action:hover, .event-save-action.is-active { background: #e7f2ed; border-color: var(--accent); }
 .saved-content-section { margin-bottom: 2rem; }
 .saved-content-section > h2 { margin: 0 0 1rem; }
@@ -2014,10 +2015,16 @@ body.has-share-modal { overflow: hidden; }
   .featured-event--compact { display: none; }
   .featured-event--lead { min-height: 250px; }
   .featured-event--lead .featured-event-image { min-height: 100%; }
-  .featured-event footer, .event-archive-card footer {
+  .featured-event footer {
     align-items: flex-start;
     flex-direction: column;
   }
+  .event-archive-card footer {
+    align-items: center;
+    flex-direction: row;
+    flex-wrap: nowrap;
+  }
+  .event-archive-card .event-card-meta { flex: 1 1 auto; }
 }
 @media (max-width: 820px) {
   .page { width: min(94vw, 720px); padding: 1.25rem 0 6.5rem; }

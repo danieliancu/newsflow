@@ -198,6 +198,21 @@ body { font-family: "Roboto", sans-serif !important; }
   white-space: nowrap;
 }
 
+/* Keep the longer RefreshRun metric headings compact and readable. */
+#result_list th.column-sources_succeeded,
+#result_list th.column-sources_failed,
+#result_list th.column-articles_collected {
+  width: 5.5rem;
+  min-width: 5.5rem;
+  white-space: normal;
+}
+
+#result_list th.column-sources_succeeded a,
+#result_list th.column-sources_failed a,
+#result_list th.column-articles_collected a {
+  white-space: normal;
+}
+
 .dark .nf-dashboard { --nf-ink: #f4f4f5; --nf-muted: #a1a1aa; --nf-line: #323238; --nf-surface: #202024; }
 .dark .nf-kpi, .dark .nf-panel { background: var(--nf-surface); box-shadow: none; }
 .dark .nf-navigation-section, .dark .nf-admin-card { background: var(--nf-surface); }
@@ -551,6 +566,10 @@ body { font-family: "Roboto", sans-serif !important; }
 .nf-report-errors article b, .nf-report-errors code { display: block; }
 .nf-report-errors code { overflow-wrap: anywhere; margin-top: 6px; color: var(--nf-muted); font-size: 11px; white-space: normal; }
 .nf-report-empty { margin: 0; padding: 18px; border-radius: 9px; color: var(--nf-muted); background: #f7f7f9; font-size: 12px; text-align: center; }
+.nf-report-failure { display: grid; gap: 5px; padding: 14px 17px; border: 1px solid #efc3c8; border-radius: 11px; color: #8d2630; background: #fff4f5; }
+.nf-report-failure strong { font-size: 13px; }
+.nf-report-failure span { font-size: 12px; overflow-wrap: anywhere; }
+.nf-report-failure small { color: #9c6268; font-size: 10px; }
 .dark .nf-report-kpi, .dark .nf-report-panel { background: var(--nf-surface); }
 .dark .nf-report-token-totals span, .dark .nf-report-empty { background: #29292e; }
 .dark .nf-report-event-list a:hover { background: #29252f; }

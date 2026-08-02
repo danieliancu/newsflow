@@ -11,8 +11,8 @@
     <div class="event-card-meta">
       <span><i data-lucide="newspaper" aria-hidden="true"></i>{{ event.generated_source_count }} {% translate "surse distincte" %}</span>
       <span class="event-card-meta-separator" aria-hidden="true">•</span>
-      {% if event.first_generated_at and event.last_generated_at and event.last_generated_at != event.first_generated_at %}
-        <span>{% translate "Actualizat" %} {{ event.last_generated_at|date:"H:i" }}</span>
+      {% if event.is_publicly_updated %}
+        <span>{% translate "Actualizat" %} {{ event.public_updated_at|date:"H:i" }}</span>
       {% else %}
         <span>{% translate "Publicat" %} {{ event.first_generated_at|default:event.last_generated_at|date:"H:i" }}</span>
       {% endif %}

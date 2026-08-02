@@ -158,6 +158,24 @@ class Event(models.Model):
     def public_path(self):
         return f"/eveniment/{self.slug}/"
 
+    @property
+    def public_updated_at(self):
+        """Latest public activity, including a newly attached report."""
+        timestamps = [
+            timestamp
+            for timestamp in (self.last_generated_at, self.last_article_at)
+            if timestamp is not None
+        ]
+        return max(timestamps, default=None)
+
+    @property
+    def is_publicly_updated(self):
+        return bool(
+            self.first_generated_at
+            and self.public_updated_at
+            and self.public_updated_at > self.first_generated_at
+        )
+
 
 class EventArticle(models.Model):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="event_articles")

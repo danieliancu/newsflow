@@ -132,7 +132,7 @@
   </div>
 
   <button class="button filters-submit" type="submit">
-    {% if user.is_authenticated %}{% translate "Aplică preferințele" %}{% else %}{% translate "Aplică filtrele" %}{% endif %}
+    {% if user.is_authenticated %}{% translate "Aplică preferințele" %}{% else %}{% translate "Filtrează revista presei" %}{% endif %}
   </button>
   {% if not user.is_authenticated %}
     <section class="guest-conversion-card">

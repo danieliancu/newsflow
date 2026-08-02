@@ -62,7 +62,7 @@ INSTALLED_APPS = [
 
 UNFOLD = {
     "SITE_TITLE": "Newsflow Admin",
-    "SITE_HEADER": "Newsflow",
+    "SITE_HEADER": "Newsflow.ro",
     "SITE_SUBHEADER": "Analytics & operations",
     "DASHBOARD_CALLBACK": "config.admin_dashboard.dashboard_callback",
     "STYLES": [lambda request: f"{STATIC_URL}css/admin-dashboard.css"],
