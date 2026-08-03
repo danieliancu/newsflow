@@ -112,7 +112,6 @@ class Event(models.Model):
         Article, through="EventArticle", related_name="events"
     )
     summary = models.TextField(blank=True)
-    confirmed_facts = models.JSONField(default=list, blank=True)
     differences = models.JSONField(default=list, blank=True)
     timeline = models.JSONField(default=list, blank=True)
     source_snapshot = models.JSONField(default=list, blank=True)

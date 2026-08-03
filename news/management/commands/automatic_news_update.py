@@ -37,6 +37,13 @@ class Command(BaseCommand):
         stale_before = timezone.now() - timedelta(
             minutes=settings.NEWSFLOW_AUTOMATIC_LOCK_TIMEOUT_MINUTES
         )
+        RefreshRun.objects.filter(
+            status=RefreshRun.Status.RUNNING, started_at__lt=stale_before
+        ).update(
+            status=RefreshRun.Status.FAILED,
+            finished_at=timezone.now(),
+            note="Rulare întreruptă: lockul automat a expirat.",
+        )
         with transaction.atomic():
             lock, _ = AutomaticUpdateLock.objects.select_for_update().get_or_create(
                 name=LOCK_NAME

@@ -6,18 +6,65 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from django.core.management import call_command
-from django.test import TestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from taxonomy.models import Category, KeywordRule, Topic
 
 from .event_services import (
+    difference_is_material_conflict,
     generate_event,
     merge_semantically_equivalent_candidates,
     process_event_queue,
     reserve_event_budget,
     synchronize_events,
 )
+from .http_client import ResponseTooLargeError, SafeHTTPClient, UnsafeURLError, validate_public_url
+
+
+class SafeHTTPClientTests(SimpleTestCase):
+    @patch("news.http_client.socket.getaddrinfo", return_value=[(2, 1, 6, "", ("127.0.0.1", 80))])
+    def test_rejects_local_and_private_destinations(self, _resolve):
+        with self.assertRaises(UnsafeURLError):
+            validate_public_url("http://example.test/news")
+
+    def test_rejects_unsupported_schemes_and_userinfo(self):
+        for url in ("file:///etc/passwd", "https://user:pass@example.com/news"):
+            with self.assertRaises(UnsafeURLError):
+                validate_public_url(url)
+
+    @override_settings(NEWSFLOW_CONNECT_TIMEOUT=1, NEWSFLOW_READ_TIMEOUT=1)
+    @patch("news.http_client.socket.getaddrinfo", return_value=[(2, 1, 6, "", ("93.184.216.34", 443))])
+    def test_rejects_oversized_responses(self, _resolve):
+        response = Mock(
+            is_redirect=False,
+            is_permanent_redirect=False,
+            headers={"Content-Length": "11"},
+        )
+        response.raise_for_status.return_value = None
+        client = SafeHTTPClient(session=Mock())
+        client.session.get.return_value = response
+        with self.assertRaises(ResponseTooLargeError):
+            client.get("https://example.com/feed", max_bytes=10)
+
+    @override_settings(NEWSFLOW_CONNECT_TIMEOUT=1, NEWSFLOW_READ_TIMEOUT=1)
+    @patch(
+        "news.http_client.socket.getaddrinfo",
+        side_effect=[
+            [(2, 1, 6, "", ("93.184.216.34", 443))],
+            [(2, 1, 6, "", ("127.0.0.1", 80))],
+        ],
+    )
+    def test_rejects_redirects_to_internal_destinations(self, _resolve):
+        response = Mock(
+            is_redirect=True,
+            is_permanent_redirect=False,
+            headers={"Location": "http://internal.test/private"},
+        )
+        client = SafeHTTPClient(session=Mock())
+        client.session.get.return_value = response
+        with self.assertRaises(UnsafeURLError):
+            client.get("https://example.com/feed", max_bytes=100)
 from .models import (
     Article,
     AIUsage,
@@ -41,7 +88,7 @@ from .services import (
 
 
 class ExtractionTests(TestCase):
-    def test_extracts_metadata_and_first_meaningful_paragraph(self):
+    def test_extracts_metadata_and_first_two_meaningful_paragraphs(self):
         html = """
         <html><head>
           <link rel="canonical" href="/stire?utm_source=test">
@@ -64,7 +111,7 @@ class ExtractionTests(TestCase):
         self.assertEqual(result["canonical_url"], "https://exemplu.ro/stire")
         self.assertEqual(result["title"], "Titlu important")
         self.assertTrue(result["first_paragraph"].startswith("Acesta este"))
-        self.assertNotIn("second_paragraph", result)
+        self.assertTrue(result["second_paragraph"].startswith("Acesta este al doilea"))
         self.assertEqual(result["source_sections"], ["Externe", "Rusia"])
 
     def test_canonical_url_removes_tracking_but_keeps_real_query(self):
@@ -108,8 +155,8 @@ class ExtractionTests(TestCase):
 @override_settings(OPENAI_CLASSIFICATION_ENABLED=False)
 class ImageBackfillTests(TestCase):
     @patch("news.management.commands.backfill_article_images._can_fetch", return_value=True)
-    @patch("news.management.commands.backfill_article_images.requests.Session")
-    def test_backfill_updates_only_articles_without_images(self, session_class, can_fetch):
+    @patch("news.management.commands.backfill_article_images.SafeHTTPClient")
+    def test_backfill_updates_only_articles_without_images(self, client_class, can_fetch):
         source = Source.objects.create(
             name="Sursa imagini",
             domain="imagini.ro",
@@ -136,7 +183,7 @@ class ImageBackfillTests(TestCase):
             text=html,
         )
         response.raise_for_status.return_value = None
-        session_class.return_value.get.return_value = response
+        client_class.return_value.get.return_value = response
         output = StringIO()
 
         call_command("backfill_article_images", stdout=output)
@@ -145,7 +192,7 @@ class ImageBackfillTests(TestCase):
         existing.refresh_from_db()
         self.assertEqual(missing.image_url, "https://imagini.ro/noua.jpg")
         self.assertEqual(existing.image_url, "https://imagini.ro/deja.jpg")
-        self.assertEqual(session_class.return_value.get.call_count, 1)
+        self.assertEqual(client_class.return_value.get.call_count, 1)
         self.assertIn("1 actualizate", output.getvalue())
 
 
@@ -406,6 +453,20 @@ class NearDuplicateTests(TestCase):
         second = Article(source=self.source_b, title="Echipa națională câștigă meciul de fotbal")
         self.assertEqual(near_duplicate_score(first, second), 0)
 
+    def test_strong_paragraph_match_groups_more_differently_worded_titles(self):
+        first = Article(
+            source=self.source_a,
+            title="Novinite: Centrala nucleară Kozlodui rămâne operațională în ciuda nivelului record de scăzut al Dunării",
+            first_paragraph="Cele două unități ale centralei Kozlodui continuă să funcționeze normal în pofida nivelului record de scăzut al Dunării.",
+        )
+        second = Article(
+            source=self.source_b,
+            title="Unitățile centralei nucleare bulgare de la Kozlodui funcționează normal, în pofida nivelului scăzut record al Dunării",
+            first_paragraph="Cele două unități ale centralei Kozlodui continuă să funcționeze normal în pofida nivelului record de scăzut al Dunării.",
+        )
+
+        self.assertGreater(near_duplicate_score(first, second), 0)
+
 
 @override_settings(NEWSFLOW_USER_AGENT="Newsflow-Test", NEWSFLOW_REQUEST_TIMEOUT=1)
 class IngestionTests(TestCase):
@@ -417,24 +478,25 @@ class IngestionTests(TestCase):
         <item><title>Stire</title><link>https://exemplu.ro/stire?utm_source=x</link></item>
         <item><title>Stire</title><link>https://exemplu.ro/stire</link></item>
         </channel></rss>"""
-        html = "<html><head><title>Știre test</title></head><body><article><p>Primul paragraf al știrii este suficient de lung pentru test.</p></article></body></html>"
+        html = "<html><head><title>Știre test</title></head><body><article><p>Primul paragraf al știrii este suficient de lung pentru test.</p><p>Al doilea paragraf al știrii este suficient de lung pentru test.</p></article></body></html>"
 
-        robots = Mock(ok=False)
         feed_response = Mock(content=rss)
         feed_response.raise_for_status.return_value = None
         page_response = Mock(text=html)
         page_response.raise_for_status.return_value = None
-        session = Mock()
-        session.get.side_effect = [robots, feed_response, page_response]
+        client = Mock()
+        client.get.side_effect = [feed_response, page_response]
 
-        with patch("news.services.requests.Session", return_value=session):
+        with patch("news.services._can_fetch", return_value=True), patch(
+            "news.services.SafeHTTPClient", return_value=client
+        ):
             count = ingest_source(source)
         self.assertEqual(count, 1)
         self.assertEqual(Article.objects.count(), 1)
         article = Article.objects.get()
         self.assertTrue(article.first_paragraph)
         self.assertEqual(article.lead, "")
-        self.assertEqual(article.second_paragraph, "")
+        self.assertTrue(article.second_paragraph)
         self.assertEqual(article.author, "")
 
     def test_failed_article_is_retried(self):
@@ -452,15 +514,16 @@ class IngestionTests(TestCase):
         <item><title>Stire</title><link>https://exemplu.ro/stire</link></item>
         </channel></rss>"""
         html = "<html><head><title>Știre reparată</title></head><body><article><p>Primul paragraf al știrii este suficient de lung pentru test.</p></article></body></html>"
-        robots = Mock(ok=False)
         feed_response = Mock(content=rss)
         feed_response.raise_for_status.return_value = None
         page_response = Mock(text=html)
         page_response.raise_for_status.return_value = None
-        session = Mock()
-        session.get.side_effect = [robots, feed_response, page_response]
+        client = Mock()
+        client.get.side_effect = [feed_response, page_response]
 
-        with patch("news.services.requests.Session", return_value=session):
+        with patch("news.services._can_fetch", return_value=True), patch(
+            "news.services.SafeHTTPClient", return_value=client
+        ):
             ingest_source(source)
         failed.refresh_from_db()
         self.assertEqual(failed.processing_status, Article.ProcessingStatus.PROCESSED)
@@ -648,16 +711,6 @@ class EventPipelineTests(TestCase):
                 {
                     "title": "Proiectul anunțat de Guvern",
                     "summary": "O sinteză originală bazată pe relatările disponibile.",
-                    "confirmed_facts": [
-                        {
-                            "text": "Proiectul a fost anunțat public.",
-                            "article_ids": [self.root.pk, article_b.pk],
-                        },
-                        {
-                            "text": "Afirmație dintr-o singură sursă.",
-                            "article_ids": [article_c.pk],
-                        },
-                    ],
                     "differences": [],
                     "timeline": [],
                 }
@@ -669,9 +722,14 @@ class EventPipelineTests(TestCase):
         event.refresh_from_db()
         self.assertEqual(event.status, Event.Status.INDEXABLE)
         self.assertEqual(event.slug, original_slug)
-        self.assertEqual(len(event.confirmed_facts), 1)
         self.assertEqual(event.ai_usage.count(), 2)
         self.assertGreater(event.total_cost_gbp, 0)
+        extraction_input = json.loads(
+            openai.return_value.responses.create.call_args_list[0].kwargs["input"]
+        )
+        self.assertTrue(
+            all("second_paragraph" in source for source in extraction_input)
+        )
         summary_instructions = openai.return_value.responses.create.call_args_list[1].kwargs[
             "instructions"
         ]
@@ -683,9 +741,10 @@ class EventPipelineTests(TestCase):
             summary_instructions,
         )
         self.assertIn("fără nume de publicații", summary_instructions)
+        self.assertIn("fapt contextual relevant", summary_instructions)
+        self.assertIn("atribui explicit", summary_instructions)
         self.assertIn("«informația este confirmată»", summary_instructions)
         self.assertIn("omite-l din summary", summary_instructions)
-        self.assertNotIn("atribuirea explicită", summary_instructions)
         self.assertIn("diferă în mod real", summary_instructions)
         self.assertIn("returnează differences ca listă goală", summary_instructions)
         self.assertIn("3 milioane EUR", summary_instructions)
@@ -897,7 +956,6 @@ class EventPipelineTests(TestCase):
                 {
                     "title": "Proiectul Guvernului a fost aprobat",
                     "summary": "Proiectul anunțat anterior a fost aprobat.",
-                    "confirmed_facts": [],
                     "differences": [],
                     "timeline": [],
                 }
@@ -967,4 +1025,20 @@ class EventPipelineTests(TestCase):
         self.assertEqual(run.cost_gbp, Decimal("0.015000") * source_count)
         self.assertEqual(
             run.classification_cost_gbp, Decimal("0.01500000") * source_count
+        )
+    def test_source_omissions_are_not_material_differences(self):
+        self.assertFalse(
+            difference_is_material_conflict(
+                "Financial Intelligence menționează suspendarea, informație care nu apare în G4Media."
+            )
+        )
+        self.assertFalse(
+            difference_is_material_conflict(
+                "Detaliul este prezent în Financial Intelligence, dar lipsește din G4Media."
+            )
+        )
+        self.assertTrue(
+            difference_is_material_conflict(
+                "Financial Intelligence indică 3 reactoare, iar G4Media indică 4 reactoare."
+            )
         )

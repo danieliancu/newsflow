@@ -8,7 +8,6 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 from urllib.robotparser import RobotFileParser
 
 import feedparser
-import requests
 from bs4 import BeautifulSoup
 from django.conf import settings
 from django.db import models, transaction
@@ -18,6 +17,7 @@ from taxonomy.models import Category, KeywordRule, Topic
 
 from .models import Article, ArticleTopic, Source
 from .ai_classifier import classify_article_with_ai
+from .http_client import SafeHTTPClient
 
 TRACKING_PARAMETERS = {"fbclid", "gclid", "ref", "source"}
 TRACKING_PREFIXES = ("utm_",)
@@ -25,6 +25,7 @@ FIELD_WEIGHTS = (("title", 5), ("first_paragraph", 3))
 DEDUPLICATION_WINDOW_HOURS = 48
 TITLE_SIMILARITY_THRESHOLD = 0.62
 LEAD_SIMILARITY_THRESHOLD = 0.72
+STRONG_LEAD_SIMILARITY_THRESHOLD = 0.85
 STOP_WORDS = {
     "a", "ai", "al", "ale", "ale", "cu", "ca", "care", "ce", "de", "din", "dupa",
     "este", "fi", "fost", "in", "intr", "la", "le", "lui", "mai", "o", "pe", "pentru",
@@ -110,6 +111,8 @@ def near_duplicate_score(first, second):
         return title_score
     if title_score >= 0.48 and paragraph_score >= LEAD_SIMILARITY_THRESHOLD:
         return (title_score * 0.65) + (paragraph_score * 0.35)
+    if title_score >= 0.32 and paragraph_score >= STRONG_LEAD_SIMILARITY_THRESHOLD:
+        return (title_score * 0.45) + (paragraph_score * 0.55)
     return 0.0
 
 
@@ -228,12 +231,13 @@ def extract_article(html, url):
         if len(candidate) >= 40 and not is_boilerplate and normalized_candidate not in seen:
             paragraphs.append(candidate)
             seen.add(normalized_candidate)
-        if paragraphs:
+        if len(paragraphs) >= 2:
             break
     return {
         "canonical_url": canonicalize_url(canonical_url),
         "title": title,
         "first_paragraph": paragraphs[0] if paragraphs else "",
+        "second_paragraph": paragraphs[1] if len(paragraphs) > 1 else "",
         "source_sections": extract_breadcrumbs(soup),
         "image_url": extract_image_url(soup, url),
     }
@@ -328,23 +332,28 @@ def classify_article(article, refresh_run=None):
     return matches
 
 
-def _can_fetch(url, session, robots_cache):
-    domain = urlsplit(url).netloc
+def _can_fetch(url, client, robots_cache):
+    parsed_url = urlsplit(url)
+    domain = parsed_url.netloc.casefold()
     if domain in robots_cache:
         parser = robots_cache[domain]
+        if parser is False:
+            return False
         return parser is None or parser.can_fetch(settings.NEWSFLOW_USER_AGENT, url)
-    robots_url = f"https://{domain}/robots.txt"
+    robots_url = f"{parsed_url.scheme}://{domain}/robots.txt"
     parser = RobotFileParser(robots_url)
     try:
-        response = session.get(robots_url, timeout=settings.NEWSFLOW_REQUEST_TIMEOUT)
-        if response.ok:
-            parser.parse(response.text.splitlines())
-            robots_cache[domain] = parser
-            return parser.can_fetch(settings.NEWSFLOW_USER_AGENT, url)
-    except requests.RequestException:
-        pass
-    robots_cache[domain] = None
-    return True
+        response = client.get(robots_url, max_bytes=settings.NEWSFLOW_MAX_PAGE_BYTES)
+        parser.parse(decode_response_text(response).splitlines())
+        robots_cache[domain] = parser
+        return parser.can_fetch(settings.NEWSFLOW_USER_AGENT, url)
+    except Exception as exc:
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        if status == 404:
+            robots_cache[domain] = None
+            return True
+        robots_cache[domain] = False
+        raise PermissionError(f"robots.txt nu a putut fi verificat pentru {domain}: {exc}") from exc
 
 
 def _published_at(entry):
@@ -360,16 +369,13 @@ def _published_at(entry):
 
 
 def ingest_source(source, refresh=False, refresh_run=None):
-    headers = {"User-Agent": settings.NEWSFLOW_USER_AGENT}
-    session = requests.Session()
-    session.headers.update(headers)
+    client = SafeHTTPClient()
     robots_cache = {}
     created_count = 0
     try:
-        if not _can_fetch(source.feed_url, session, robots_cache):
+        if not _can_fetch(source.feed_url, client, robots_cache):
             raise PermissionError("Accesul la feed este interzis de robots.txt.")
-        feed_response = session.get(source.feed_url, timeout=settings.NEWSFLOW_REQUEST_TIMEOUT)
-        feed_response.raise_for_status()
+        feed_response = client.get(source.feed_url, max_bytes=settings.NEWSFLOW_MAX_FEED_BYTES)
         feed = feedparser.parse(feed_response.content)
         if feed.bozo and not feed.entries:
             raise ValueError(f"Feed RSS invalid: {feed.bozo_exception}")
@@ -382,11 +388,10 @@ def ingest_source(source, refresh=False, refresh_run=None):
             existing = Article.objects.filter(canonical_url=url).first()
             if existing and existing.processing_status == Article.ProcessingStatus.PROCESSED and not refresh:
                 continue
-            if not _can_fetch(url, session, robots_cache):
+            if not _can_fetch(url, client, robots_cache):
                 continue
             try:
-                page_response = session.get(url, timeout=settings.NEWSFLOW_REQUEST_TIMEOUT)
-                page_response.raise_for_status()
+                page_response = client.get(url, max_bytes=settings.NEWSFLOW_MAX_PAGE_BYTES)
                 extracted = extract_article(decode_response_text(page_response), url)
                 title = extracted["title"] or clean_text(entry.get("title"))
                 fingerprint = content_fingerprint(title, extracted["first_paragraph"], "")
@@ -401,7 +406,7 @@ def ingest_source(source, refresh=False, refresh_run=None):
                 article.title = title[:500]
                 article.lead = ""
                 article.first_paragraph = extracted["first_paragraph"]
-                article.second_paragraph = ""
+                article.second_paragraph = extracted["second_paragraph"]
                 article.author = ""
                 article.image_url = extracted["image_url"]
                 article.source_sections = extracted["source_sections"]

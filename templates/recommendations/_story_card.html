@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n newsflow_tags %}
 <article class="story{% if story_card_class %} {{ story_card_class }}{% endif %}" data-article-id="{{ article.id }}">
   {% if article.image_url %}
     <a
@@ -23,7 +23,7 @@
   <div class="story-meta">
     <span><a href="{% url 'source_archive' article.source.slug %}">{{ article.source.name }}</a></span>
     <span class="story-meta-separator" aria-hidden="true">•</span>
-    <span>{{ article_date|date:"d.m.Y" }}</span>
+    <span>{{ article_date|article_date_ro }}</span>
     <span class="story-meta-separator" aria-hidden="true">•</span>
     <span>{{ article_date|date:"H:i" }}</span>
   </div>

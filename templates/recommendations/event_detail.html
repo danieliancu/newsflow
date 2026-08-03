@@ -71,21 +71,14 @@
       {{ event.summary|linebreaks }}
     </section>
 
-    {% if event.confirmed_facts %}
-      <section class="event-content-section">
-        <h2 class="event-section-title"><span class="event-section-icon"><i data-lucide="badge-check" aria-hidden="true"></i></span>{% translate "Pe scurt" %}</h2>
-        <ul>{% for fact in event.confirmed_facts %}<li>{{ fact.text }}</li>{% endfor %}</ul>
-      </section>
-    {% endif %}
-
-    {% if event.differences %}
+    {% if event.display_differences %}
       <section class="event-content-section">
         <h2 class="event-section-title"><span class="event-section-icon"><i data-lucide="git-compare-arrows" aria-hidden="true"></i></span>{% translate "Ce diferă între surse" %}</h2>
-        <ul>{% for difference in event.differences %}<li>{{ difference }}</li>{% endfor %}</ul>
+        <ul>{% for difference in event.display_differences %}<li>{{ difference }}</li>{% endfor %}</ul>
       </section>
     {% endif %}
 
-    {% if event_timeline|length > 1 %}
+    {% if show_event_timeline %}
       <section class="event-content-section">
         <h2 class="event-section-title"><span class="event-section-icon"><i data-lucide="history" aria-hidden="true"></i></span>{% translate "Cronologie" %}</h2>
         <ul>{% for item in event_timeline %}<li><strong>{{ item.display_date }}</strong> — {{ item.text }}</li>{% endfor %}</ul>

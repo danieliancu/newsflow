@@ -23,12 +23,11 @@ from django.utils.html import escape
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from news.models import Article, Event, EventBudget
+from news.event_services import difference_is_material_conflict, eligible_event_articles
 from accounts.forms import PreferenceForm
 from accounts.models import User
 from accounts.views import available_categories, preference_context
-from news.models import RefreshRun, Source
-from news.services import ingest_source
-from news.jobs import enqueue_refresh
+from news.models import Source
 from taxonomy.models import Category, Topic
 
 from .models import Interaction, OpenedEvent, SavedEvent
@@ -226,7 +225,20 @@ def _public_events():
     return Event.objects.filter(
         status__in=[Event.Status.INDEXABLE, Event.Status.STABLE],
         summary__gt="",
+    ).annotate(
+        public_total_articles=Count("articles", distinct=True),
+        public_eligible_articles=Count(
+            "articles",
+            filter=~Q(articles__source__slug__in=settings.NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS),
+            distinct=True,
+        ),
+    ).filter(
+        Q(public_total_articles=0) | Q(public_eligible_articles__gt=0)
     ).order_by("-last_article_at", "-last_generated_at")
+
+
+def _topics_of_day_events():
+    return _public_events()
 
 
 def _with_representative_images(events):
@@ -235,7 +247,7 @@ def _with_representative_images(events):
     if not event_by_id:
         return events
     image_articles = (
-        Article.objects.filter(events__pk__in=event_by_id)
+        eligible_event_articles(Article.objects.filter(events__pk__in=event_by_id))
         .exclude(image_url="")
         .select_related("event_membership")
         .order_by("-published_at", "-collected_at")
@@ -257,14 +269,21 @@ def _group_public_event_articles(articles, seen_event_ids=None):
     if not article_by_id:
         return articles
     seen_event_ids = seen_event_ids if seen_event_ids is not None else set()
+    event_article_ids = {
+        article.pk
+        for article in articles
+        if article.source.slug not in settings.NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS
+    }
     events = (
-        _public_events()
-        .filter(articles__pk__in=article_by_id)
+        _topics_of_day_events()
+        .filter(articles__pk__in=event_article_ids)
         .prefetch_related("articles")
         .distinct()
     )
     for event in events:
-        for article in event.articles.all():
+        for article in event.articles.exclude(
+            source__slug__in=settings.NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS
+        ):
             if article.pk in article_by_id:
                 article_by_id[article.pk].public_event = event
     grouped = []
@@ -506,7 +525,7 @@ def topic_archive(request, slug):
 
 
 def events_archive(request):
-    public_events = _public_events()
+    public_events = _topics_of_day_events()
     today = timezone.localdate()
     current_events_query = public_events.filter(
         Q(first_generated_at__date=today)
@@ -579,6 +598,11 @@ def event_detail(request, slug):
             Event.Status.STABLE,
         ],
     )
+    event.display_differences = [
+        difference
+        for difference in event.differences
+        if difference_is_material_conflict(difference)
+    ]
     if request.user.is_authenticated:
         opened_event, _ = OpenedEvent.objects.get_or_create(
             user=request.user,
@@ -586,7 +610,7 @@ def event_detail(request, slug):
         )
         OpenedEvent.objects.filter(pk=opened_event.pk).update(updated_at=timezone.now())
     articles = list(
-        event.articles.select_related("source", "primary_category").order_by(
+        eligible_event_articles(event.articles.select_related("source", "primary_category")).order_by(
             "published_at", "collected_at"
         )
     )
@@ -685,6 +709,11 @@ def event_detail(request, slug):
     })
     budget = EventBudget.get_solo()
     event_timeline = _event_timeline_for_display(event.timeline)
+    timeline_dates = {
+        str(item.get("date", ""))[:10]
+        for item in event.timeline or []
+        if item.get("date")
+    }
     return render(
         request,
         "recommendations/event_detail.html",
@@ -692,6 +721,7 @@ def event_detail(request, slug):
             "event": event,
             "articles": articles,
             "event_timeline": event_timeline,
+            "show_event_timeline": len(timeline_dates) > 1,
             "related_events": related_events,
             "previous_event": previous_event,
             "next_event": next_event,
@@ -796,7 +826,7 @@ def feed(request):
         "articles": articles,
         "other_articles": other_articles,
         "saved_ids": saved_ids,
-        "featured_events": _with_representative_images(_public_events()[:9]),
+        "featured_events": _with_representative_images(_topics_of_day_events()[:9]),
         "canonical_url": _public_url(request.path),
         "robots_value": "noindex,follow" if request.GET else "index,follow",
         "og_title": "Newsflow · Știrile tale, fără zgomot",
@@ -964,7 +994,7 @@ def search_results(request):
         articles = article_base.filter(pk__in=article_ids).order_by(
             "-published_at", "-collected_at"
         )
-        event_base = _public_events()
+        event_base = _topics_of_day_events()
         event_ids = _normalized_search_ids(
             event_base.values("id", "title", "summary"),
             query,
@@ -1126,134 +1156,6 @@ def robots_txt(request):
         f"Sitemap: {_public_url(reverse('news_sitemap'))}\n"
     )
     return HttpResponse(body, content_type="text/plain")
-
-
-@require_POST
-def refresh_news(request):
-    refresh_run = RefreshRun.objects.create(
-        requested_by=request.user if request.user.is_authenticated else None,
-        ip_address=request.META.get("REMOTE_ADDR"),
-    )
-    cooldown_cutoff = timezone.now() - timedelta(seconds=60)
-    if Source.objects.filter(
-        is_active=True, last_checked_at__gte=cooldown_cutoff
-    ).exists():
-        refresh_run.status = RefreshRun.Status.SKIPPED
-        refresh_run.finished_at = timezone.now()
-        refresh_run.note = "Sursele au fost actualizate în ultimele 60 de secunde."
-        refresh_run.save(update_fields=["status", "finished_at", "note"])
-        messages.info(request, "Știrile au fost actualizate foarte recent.")
-    else:
-        collected = 0
-        failures = 0
-        sources = Source.objects.filter(is_active=True)
-        refresh_run.sources_attempted = sources.count()
-        refresh_run.save(update_fields=["sources_attempted"])
-        for source in sources:
-            try:
-                collected += ingest_source(source, refresh_run=refresh_run)
-            except Exception:
-                failures += 1
-        usage = refresh_run.ai_usage.aggregate(
-            calls=Count("id"),
-            input_tokens=Sum("input_tokens"),
-            output_tokens=Sum("output_tokens"),
-            cost_usd=Sum("total_cost_usd"),
-            cost_gbp=Sum("total_cost_gbp"),
-        )
-        refresh_run.status = (
-            RefreshRun.Status.PARTIAL if failures else RefreshRun.Status.COMPLETED
-        )
-        refresh_run.finished_at = timezone.now()
-        refresh_run.sources_succeeded = refresh_run.sources_attempted - failures
-        refresh_run.sources_failed = failures
-        refresh_run.articles_collected = collected
-        refresh_run.ai_calls = usage["calls"] or 0
-        refresh_run.input_tokens = usage["input_tokens"] or 0
-        refresh_run.output_tokens = usage["output_tokens"] or 0
-        refresh_run.cost_usd = usage["cost_usd"] or 0
-        refresh_run.cost_gbp = usage["cost_gbp"] or 0
-        refresh_run.save()
-        if failures:
-            messages.warning(
-                request,
-                f"Au fost adăugate {collected} știri. {failures} surse nu au putut fi actualizate.",
-            )
-        else:
-            messages.success(request, f"Actualizare finalizată: {collected} știri noi.")
-
-    target = request.POST.get("next", reverse("feed"))
-    if not url_has_allowed_host_and_scheme(
-        target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-    ):
-        target = reverse("feed")
-    return redirect(target)
-
-
-@require_POST
-def refresh_news_background(request):
-    cooldown_cutoff = timezone.now() - timedelta(seconds=60)
-    if Source.objects.filter(
-        is_active=True, last_checked_at__gte=cooldown_cutoff
-    ).exists():
-        refresh_run = RefreshRun.objects.create(
-            requested_by=request.user if request.user.is_authenticated else None,
-            ip_address=request.META.get("REMOTE_ADDR"),
-            status=RefreshRun.Status.SKIPPED,
-            finished_at=timezone.now(),
-            note="Sursele au fost actualizate în ultimele 60 de secunde.",
-        )
-    else:
-        refresh_run = RefreshRun.objects.filter(
-            status=RefreshRun.Status.RUNNING
-        ).first()
-        if not refresh_run:
-            refresh_run = RefreshRun.objects.create(
-                requested_by=request.user if request.user.is_authenticated else None,
-                ip_address=request.META.get("REMOTE_ADDR"),
-            )
-            enqueue_refresh(refresh_run.pk)
-    if _wants_json(request):
-        return JsonResponse(
-            {
-                "id": refresh_run.pk,
-                "status": refresh_run.status,
-                "status_url": reverse(
-                    "refresh_status", kwargs={"refresh_run_id": refresh_run.pk}
-                ),
-            },
-            status=202 if refresh_run.status == RefreshRun.Status.RUNNING else 200,
-        )
-    messages.info(request, "Actualizarea rulează în fundal.")
-    target = request.POST.get("next", reverse("feed"))
-    if not url_has_allowed_host_and_scheme(
-        target, allowed_hosts={request.get_host()}, require_https=request.is_secure()
-    ):
-        target = reverse("feed")
-    return redirect(target)
-
-
-def refresh_status(request, refresh_run_id):
-    refresh_run = get_object_or_404(RefreshRun, pk=refresh_run_id)
-    return JsonResponse(
-        {
-            "id": refresh_run.pk,
-            "status": refresh_run.status,
-            "finished": refresh_run.status
-            in {
-                RefreshRun.Status.COMPLETED,
-                RefreshRun.Status.PARTIAL,
-                RefreshRun.Status.SKIPPED,
-                RefreshRun.Status.FAILED,
-            },
-            "finished_at": (
-                timezone.localtime(refresh_run.finished_at).strftime("%H:%M")
-                if refresh_run.finished_at
-                else None
-            ),
-            "articles_collected": refresh_run.articles_collected,
-        }
-    )
 
 
 @login_required

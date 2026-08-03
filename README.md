@@ -94,6 +94,11 @@ bugetele zilnice/lunare și costul maxim per eveniment se configurează în
 `/admin/news/eventbudget/`. Atingerea limitei oprește numai generarea AI a
 evenimentelor; colectarea și clasificarea știrilor continuă.
 
+Acesta este singurul mecanism de actualizare; aplicația nu expune endpoint-uri web
+care pornesc colectarea. Cererile către surse validează DNS-ul și redirectările și
+au limite configurabile. Sursele din `NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS` rămân
+în Revista presei, dar nu participă la construirea evenimentelor.
+
 Evenimentele cu două surse sunt accesibile cu `noindex`, iar cele cu minimum
 trei surse pot deveni indexabile. Evenimentele fără actualizări timp de șapte
 zile devin stabile și nu mai generează costuri AI.

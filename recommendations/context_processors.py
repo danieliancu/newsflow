@@ -1,7 +1,7 @@
 from .models import Interaction, SavedEvent
 from django.db.models import Max
 from news.models import Article
-from news.models import RefreshRun, Source
+from news.models import Source
 from taxonomy.models import Category
 
 
@@ -30,5 +30,4 @@ def latest_news_refresh(request):
     latest = Source.objects.filter(is_active=True).aggregate(
         latest=Max("last_checked_at")
     )["latest"]
-    running = RefreshRun.objects.filter(status=RefreshRun.Status.RUNNING).first()
-    return {"latest_news_refresh": latest, "running_refresh": running}
+    return {"latest_news_refresh": latest}

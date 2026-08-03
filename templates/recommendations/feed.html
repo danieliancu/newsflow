@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% load i18n newsflow_tags %}
-{% block title %}{% if seo_category %}Știri {{ seo_category.name }} · Newsflow{% else %}Fluxul tău de știri · Newsflow{% endif %}{% endblock %}
+{% block title %}{% if seo_category %}Știri {{ seo_category.name }} · Newsflow{% else %}Fluxul tău de știri - Newsflow România{% endif %}{% endblock %}
 {% block meta_description %}{% if seo_category %}<meta name="description" content="Cele mai recente știri din categoria {{ seo_category.name }} din publicații românești.">{% else %}{{ block.super }}{% endif %}{% endblock %}
 {% block content %}
 <button class="mobile-filter-trigger" type="button" data-filter-open aria-controls="mobile-filters" aria-expanded="false">

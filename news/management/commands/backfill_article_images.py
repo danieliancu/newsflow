@@ -1,8 +1,8 @@
-import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from news.models import Article
+from news.http_client import SafeHTTPClient
 from news.services import _can_fetch, decode_response_text, extract_image_url_from_html
 
 
@@ -18,8 +18,7 @@ class Command(BaseCommand):
             .select_related("source")
             .order_by("pk")
         )
-        session = requests.Session()
-        session.headers.update({"User-Agent": settings.NEWSFLOW_USER_AGENT})
+        client = SafeHTTPClient()
         robots_cache = {}
         updated = 0
         without_image = 0
@@ -28,14 +27,13 @@ class Command(BaseCommand):
 
         for article in articles.iterator():
             try:
-                if not _can_fetch(article.canonical_url, session, robots_cache):
+                if not _can_fetch(article.canonical_url, client, robots_cache):
                     blocked += 1
                     continue
-                response = session.get(
+                response = client.get(
                     article.canonical_url,
-                    timeout=settings.NEWSFLOW_REQUEST_TIMEOUT,
+                    max_bytes=settings.NEWSFLOW_MAX_PAGE_BYTES,
                 )
-                response.raise_for_status()
                 image_url = extract_image_url_from_html(
                     decode_response_text(response),
                     article.canonical_url,

@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -32,15 +34,14 @@ def env_list(name, default=""):
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-iji)&d+h)dj_(_35063&vwrwvn-x70^(m+&5&^zw=#xwyda%tj",
+DEBUG = env_bool("DJANGO_DEBUG", False)
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "").strip()
+if DEBUG and not SECRET_KEY:
+    SECRET_KEY = "django-insecure-newsflow-local-development-only"
+
+ALLOWED_HOSTS = env_list(
+    "DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost" if DEBUG else ""
 )
-
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env_bool("DJANGO_DEBUG", True)
-
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 
@@ -158,6 +159,17 @@ AUTH_USER_MODEL = 'accounts.User'
 
 NEWSFLOW_USER_AGENT = 'Newsflow/1.0 (+local-development)'
 NEWSFLOW_REQUEST_TIMEOUT = 10
+NEWSFLOW_CONNECT_TIMEOUT = float(os.getenv("NEWSFLOW_CONNECT_TIMEOUT", "5"))
+NEWSFLOW_READ_TIMEOUT = float(os.getenv("NEWSFLOW_READ_TIMEOUT", "10"))
+NEWSFLOW_MAX_FEED_BYTES = int(
+    os.getenv("NEWSFLOW_MAX_FEED_BYTES", str(5 * 1024 * 1024))
+)
+NEWSFLOW_MAX_PAGE_BYTES = int(
+    os.getenv("NEWSFLOW_MAX_PAGE_BYTES", str(3 * 1024 * 1024))
+)
+NEWSFLOW_MAX_IMAGE_BYTES = int(
+    os.getenv("NEWSFLOW_MAX_IMAGE_BYTES", str(3 * 1024 * 1024))
+)
 NEWSFLOW_MAX_ENTRIES_PER_SOURCE = 15
 
 EMAIL_BACKEND = os.getenv(
@@ -238,6 +250,27 @@ NEWSFLOW_EVENT_ESTIMATED_RESERVATION_GBP = os.getenv(
 NEWSFLOW_AUTOMATIC_LOCK_TIMEOUT_MINUTES = int(
     os.getenv("NEWSFLOW_AUTOMATIC_LOCK_TIMEOUT_MINUTES", "120")
 )
+NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS = env_list(
+    "NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS", "gandul"
+)
+
+if not DEBUG:
+    required = {
+        "DJANGO_SECRET_KEY": SECRET_KEY,
+        "DJANGO_ALLOWED_HOSTS": ALLOWED_HOSTS,
+        "DJANGO_CSRF_TRUSTED_ORIGINS": CSRF_TRUSTED_ORIGINS,
+        "APP_PUBLIC_URL": APP_PUBLIC_URL.startswith("https://"),
+        "PUBLIC_CONTACT_EMAIL": PUBLIC_CONTACT_EMAIL,
+        "EMAIL_BACKEND": EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend",
+        "EMAIL_HOST": EMAIL_HOST,
+        "EMAIL_HOST_USER": EMAIL_HOST_USER,
+        "EMAIL_HOST_PASSWORD": EMAIL_HOST_PASSWORD,
+    }
+    missing = [name for name, value in required.items() if not value]
+    if missing:
+        raise ImproperlyConfigured(
+            "Configurație de producție incompletă: " + ", ".join(missing)
+        )
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

@@ -67,17 +67,15 @@
       </form>
       <nav class="account-navigation">
         <span class="news-update-status"{% if latest_news_refresh %} title="{% blocktranslate with refreshed_at=latest_news_refresh|date:'d.m.Y H:i' %}Ultima actualizare: {{ refreshed_at }}{% endblocktranslate %}"{% endif %}>
-          <span class="news-update-status-dot{% if running_refresh %} is-running{% endif %}" aria-hidden="true"></span>
+          <span class="news-update-status-dot" aria-hidden="true"></span>
           <span class="news-update-status-label">
-            {% if running_refresh %}
-              {% translate "Se actualizează…" %}
-            {% elif latest_news_refresh %}
+            {% if latest_news_refresh %}
               {% translate "Actualizat" %} {{ latest_news_refresh|date:"H:i" }}
             {% else %}
               {% translate "Actualizare automată" %}
             {% endif %}
           </span>
-          <i class="news-update-status-icon{% if running_refresh %} is-running{% endif %}" data-lucide="refresh-cw" aria-hidden="true"></i>
+          <i class="news-update-status-icon" data-lucide="refresh-cw" aria-hidden="true"></i>
           {% if latest_news_refresh %}<time class="news-update-status-time" datetime="{{ latest_news_refresh|date:'c' }}">{{ latest_news_refresh|date:"H:i" }}</time>{% endif %}
         </span>
         {% if user.is_authenticated %}

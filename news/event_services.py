@@ -22,6 +22,11 @@ EVENT_SEMANTIC_MERGE_CONFIDENCE = 0.90
 EVENT_SEMANTIC_MAX_CHECKS_PER_RUN = 50
 
 
+def eligible_event_articles(queryset=None):
+    queryset = queryset if queryset is not None else Article.objects.all()
+    return queryset.exclude(source__slug__in=settings.NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS)
+
+
 def _merge_events(survivor, duplicates):
     duplicates = [event for event in duplicates if event.pk != survivor.pk]
     if not duplicates:
@@ -45,7 +50,7 @@ def _merge_events(survivor, duplicates):
             ):
                 survivor.last_generated_at = duplicate.last_generated_at
             duplicate.delete()
-        survivor.generated_source_count = survivor.articles.values("source_id").distinct().count()
+        survivor.generated_source_count = eligible_event_articles(survivor.articles).values("source_id").distinct().count()
         survivor.status = Event.Status.PENDING
         survivor.next_generation_at = timezone.now()
         survivor.save(
@@ -78,21 +83,25 @@ def _similar_events(root, members, latest):
 
 def synchronize_events():
     """Create/update event clusters from the existing duplicate relationships."""
+    EventArticle.objects.filter(
+        article__source__slug__in=settings.NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS
+    ).delete()
+    Event.objects.filter(event_articles__isnull=True).delete()
     created = 0
     updated = 0
     roots = (
-        Article.objects.filter(processing_status=Article.ProcessingStatus.PROCESSED)
+        eligible_event_articles(Article.objects.filter(processing_status=Article.ProcessingStatus.PROCESSED))
         .filter(Q(duplicate_articles__isnull=False) | Q(duplicate_of__isnull=False))
         .values_list("duplicate_of_id", flat=True)
     )
     root_ids = {root_id for root_id in roots if root_id}
     root_ids.update(
-        Article.objects.filter(duplicate_articles__isnull=False).values_list("pk", flat=True)
+        eligible_event_articles(Article.objects.filter(duplicate_articles__isnull=False)).values_list("pk", flat=True)
     )
     budget = EventBudget.get_solo()
-    for root in Article.objects.filter(pk__in=root_ids).select_related("source"):
+    for root in eligible_event_articles(Article.objects.filter(pk__in=root_ids)).select_related("source"):
         members = list(
-            Article.objects.filter(Q(pk=root.pk) | Q(duplicate_of=root))
+            eligible_event_articles(Article.objects.filter(Q(pk=root.pk) | Q(duplicate_of=root)))
             .filter(processing_status=Article.ProcessingStatus.PROCESSED)
             .select_related("source")
             .order_by("published_at", "collected_at")
@@ -242,12 +251,13 @@ def release_event_budget(reserved):
 
 def _event_sources(event):
     sources = list(
-        event.articles.select_related("source")
+        eligible_event_articles(event.articles.select_related("source"))
         .order_by("published_at", "collected_at")
         .values(
             "id",
             "title",
             "first_paragraph",
+            "second_paragraph",
             "published_at",
             "canonical_url",
             "source__name",
@@ -262,9 +272,15 @@ def _event_sources(event):
 
 def _semantic_merge_payload(event):
     articles = list(
-        event.articles.select_related("source")
+        eligible_event_articles(event.articles.select_related("source"))
         .order_by("published_at", "collected_at")
-        .values("title", "first_paragraph", "published_at", "source__name")[:8]
+        .values(
+            "title",
+            "first_paragraph",
+            "second_paragraph",
+            "published_at",
+            "source__name",
+        )[:8]
     )
     for article in articles:
         if article["published_at"]:
@@ -394,14 +410,22 @@ def replace_article_references(text, sources):
     )
 
 
-def confirmed_fact_is_subject_focused(fact, sources):
-    text = fact.get("text", "")
-    lowered = text.casefold()
-    if any(source.get("source__name", "").casefold() in lowered for source in sources):
-        return False
-    return not re.search(
-        r"\b(?:sursă|surse|sursa|sursele|articol|articolul|articole|articolele|publicația|publicațiile|relatare|relatări|relatările)\b",
-        lowered,
+SOURCE_OMISSION_PATTERNS = (
+    re.compile(r"\b(?:informa(?:ția|țiile)|detali(?:ul|ile)|aspect(?:ul|ele))\s+care\s+nu\b", re.IGNORECASE),
+    re.compile(
+        r"\bnu\s+(?:apare|apar|este\s+prezent(?:ă)?|sunt\s+prezent(?:e)?|se\s+regăsește|se\s+regăsesc|"
+        r"menționează|precizează|include|relatează|oferă|abordează|confirmă)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:lipsește|lipsesc|absent(?:ă|e)?)\b", re.IGNORECASE),
+)
+
+
+def difference_is_material_conflict(text):
+    """Reject source differences that describe omission instead of conflicting claims."""
+    normalized = " ".join(str(text or "").split())
+    return bool(normalized) and not any(
+        pattern.search(normalized) for pattern in SOURCE_OMISSION_PATTERNS
     )
 
 
@@ -492,7 +516,6 @@ def _call_update_check(client, event, new_sources, refresh_run):
                 "existing_event": {
                     "title": event.title,
                     "summary": event.summary,
-                    "confirmed_facts": event.confirmed_facts,
                     "differences": event.differences,
                     "timeline": event.timeline,
                 },
@@ -563,8 +586,7 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
             "«informațiile disponibile sunt limitate», «nu există alte detalii», «sursele nu "
             "oferă alte informații» sau echivalente. "
             "Titlul trebuie să fie factual, autonom și să aibă maximum 110 caractere. "
-            "Folosește exclusiv afirmațiile extrase. Fiecare fapt confirmat trebuie să aibă "
-            "minimum două article_ids distincte. Evidențiază separat diferențele dintre surse. "
+            "Folosește exclusiv afirmațiile extrase. Evidențiază separat diferențele dintre surse. "
             "Scrie summary cu focus pe informații și într-un flux jurnalistic natural. "
             "Folosește un stil jurnalistic clar și fluent, cu tranziții firești între idei, "
             "vocabular variat și suficient context pentru ca relevanța faptelor să fie ușor de "
@@ -573,14 +595,21 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
             "adjectivele evaluative și formulările introduse doar pentru a lungi textul. "
             "Titlul și summary trebuie să descrie exclusiv evenimentul și faptele sale, nu felul "
             "în care informația a fost publicată, relatată, verificată sau confirmată prin "
-            "compararea materialelor. Formulează informațiile direct, fără nume de publicații, "
-            "fără atribuiri și fără expresii precum «X relatează», «Y notează», «potrivit X», "
+            "compararea materialelor. Formulează direct faptele confirmate de minimum două "
+            "articole, fără nume de publicații și fără atribuiri. Pentru acestea evită expresii "
+            "precum «X relatează», «Y notează», «potrivit X», "
             "«sursele spun», «informația este confirmată» sau «relatările precizează». Nu menționa "
             "acordul dintre surse și nu explica cine a publicat ori a transmis primul informația. "
-            "Dacă un detaliu apare într-o singură publicație și nu poate fi formulat responsabil "
-            "fără atribuirea acesteia, omite-l din summary. Nu muta automat un asemenea detaliu "
-            "în differences doar pentru că apare într-o singură relatare. Folosește differences "
-            "exclusiv pentru contradicții, "
+            "Titlul nu trebuie să conțină niciodată nume de publicații. Poți include în summary "
+            "un fapt contextual relevant care apare într-o singură "
+            "publicație numai dacă îl atribui explicit acelei publicații prin source__name și "
+            "îl formulezi cu gradul de certitudine din relatare. "
+            "Dacă nu poate fi formulat responsabil cu atribuire, omite-l din summary. Nu muta "
+            "automat un asemenea detaliu "
+            "în differences doar pentru că apare într-o singură relatare. Absența sau omiterea "
+            "unei informații dintr-o publicație nu este o diferență și nu trebuie menționată. "
+            "Compară numai afirmații despre același fapt care apar explicit în minimum două "
+            "publicații. Folosește differences exclusiv pentru contradicții, "
             "valori diferite, interpretări incompatibile sau detalii asupra cărora relatările "
             "diferă în mod real și care pot schimba înțelegerea evenimentului. Rubrica nu este "
             "obligatorie: dacă nu există diferențe serioase, returnează differences ca listă "
@@ -594,10 +623,6 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
             "source__name. Nu afișa article_id, ID-uri, numere interne sau formulări precum "
             "«articolul 27» ori «sursa 27». "
             "În differences atribuie explicit informațiile publicațiilor pe nume. "
-            "În confirmed_facts scrie exclusiv faptele comune despre subiect, direct și autonom. "
-            "Nu menționa acolo publicații, surse, articole, procesul de comparare sau formulări "
-            "precum «X și Y relatează». Nu include în confirmed_facts o informație susținută "
-            "în realitate de o singură relatare. "
             "Nu folosi citate inventate și nu declara cert ceea ce apare într-o singură sursă."
         ),
         input=json.dumps(
@@ -616,21 +641,6 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
                     "properties": {
                         "title": {"type": "string", "maxLength": 110},
                         "summary": {"type": "string"},
-                        "confirmed_facts": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "text": {"type": "string"},
-                                    "article_ids": {
-                                        "type": "array",
-                                        "items": {"type": "integer"},
-                                    },
-                                },
-                                "required": ["text", "article_ids"],
-                                "additionalProperties": False,
-                            },
-                        },
                         "differences": {"type": "array", "items": {"type": "string"}},
                         "timeline": {
                             "type": "array",
@@ -652,7 +662,6 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
                     "required": [
                         "title",
                         "summary",
-                        "confirmed_facts",
                         "differences",
                         "timeline",
                     ],
@@ -678,7 +687,7 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
     return json.loads(response.output_text)
 
 
-def generate_event(event, refresh_run=None):
+def generate_event(event, refresh_run=None, force=False):
     sources = _event_sources(event)
     source_ids = {source["source_id"] for source in sources}
     reviewed_source_ids = {
@@ -687,11 +696,11 @@ def generate_event(event, refresh_run=None):
     budget = EventBudget.get_solo()
     if len(source_ids) < budget.minimum_sources_for_creation:
         return False
-    if event.last_generated_at and reviewed_source_ids >= source_ids:
+    if not force and event.last_generated_at and reviewed_source_ids >= source_ids:
         return False
-    if event.last_generated_at and not reviewed_source_ids and event.generated_source_count >= len(source_ids):
+    if not force and event.last_generated_at and not reviewed_source_ids and event.generated_source_count >= len(source_ids):
         return False
-    if event.next_generation_at and event.next_generation_at > timezone.now():
+    if not force and event.next_generation_at and event.next_generation_at > timezone.now():
         return False
     reserved, reserved_amount, reason = reserve_event_budget(event)
     if not reserved:
@@ -709,7 +718,7 @@ def generate_event(event, refresh_run=None):
     try:
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         is_update = event.first_generated_at is not None
-        if is_update:
+        if is_update and not force:
             new_sources = [
                 source for source in sources if source["source_id"] not in reviewed_source_ids
             ]
@@ -746,20 +755,15 @@ def generate_event(event, refresh_run=None):
                 return False
         claims = _call_extraction(client, event, sources, refresh_run)
         result = _call_summary(client, event, sources, claims, refresh_run, is_update)
-        allowed_ids = {source["id"] for source in sources}
-        confirmed = [
-            fact
-            for fact in result["confirmed_facts"]
-            if len(set(fact["article_ids"]) & allowed_ids) >= 2
-            and confirmed_fact_is_subject_focused(fact, sources)
-        ]
         now = timezone.now()
         event.title = result["title"][:110].rstrip()
         event.summary = remove_summary_filler(result["summary"])
-        event.confirmed_facts = confirmed
         event.differences = [
-            replace_article_references(difference, sources)
+            cleaned
             for difference in result["differences"]
+            if difference_is_material_conflict(
+                cleaned := replace_article_references(difference, sources)
+            )
         ]
         event.timeline = result["timeline"]
         event.source_snapshot = sources
@@ -814,7 +818,13 @@ def process_event_queue(refresh_run=None):
             ]
         )
         .filter(Q(next_generation_at__lte=now) | Q(next_generation_at__isnull=True))
-        .annotate(source_count=Count("articles__source", distinct=True))
+        .annotate(
+            source_count=Count(
+                "articles__source",
+                filter=~Q(articles__source__slug__in=settings.NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS),
+                distinct=True,
+            )
+        )
         .annotate(
             update_priority=Case(
                 When(first_generated_at__isnull=False, then=0),

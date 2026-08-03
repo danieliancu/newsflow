@@ -7,7 +7,7 @@ from django.db.utils import OperationalError
 from django.utils import timezone
 
 from accounts.models import CategoryPreference, FollowedTerm, SourcePreference, TopicPreference, User
-from news.models import Article, ArticleTopic, Event, EventArticle, RefreshRun, Source
+from news.models import Article, ArticleTopic, Event, EventArticle, Source
 from taxonomy.models import Category, Topic
 
 from .models import Interaction, OpenedEvent, Recommendation, SavedEvent
@@ -223,6 +223,86 @@ class FeedInterfaceTests(TestCase):
         response = self.client.get("/")
 
         self.assertNotContains(response, event.title)
+
+    def test_gandul_event_is_excluded_from_topics_of_the_day(self):
+        gandul = Source.objects.create(
+            name="Gândul",
+            domain="gandul.ro",
+            feed_url="https://gandul.ro/feed",
+        )
+        gandul_article = Article.objects.create(
+            source=gandul,
+            canonical_url="https://gandul.ro/articol-test",
+            title="Articol Gândul",
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        event = Event.objects.create(
+            title="Subiect exclus de la Gândul",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză publică.",
+            generated_source_count=3,
+            last_article_at=timezone.now(),
+            last_generated_at=timezone.now(),
+        )
+        EventArticle.objects.create(event=event, article=gandul_article)
+
+        self.assertNotContains(self.client.get("/"), event.title)
+        self.assertNotContains(self.client.get("/evenimente/"), event.title)
+
+    def test_mixed_event_keeps_only_the_eligible_contribution(self):
+        gandul = Source.objects.create(
+            name="Gândul", domain="gandul.ro", feed_url="https://gandul.ro/feed"
+        )
+        gandul_article = Article.objects.create(
+            source=gandul,
+            canonical_url="https://gandul.ro/mix",
+            title="Relatare Gândul",
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        event = Event.objects.create(
+            title="Subiect mixt păstrat",
+            status=Event.Status.INDEXABLE,
+            summary="Sinteză cu surse eligibile.",
+            generated_source_count=1,
+            last_article_at=timezone.now(),
+            last_generated_at=timezone.now(),
+        )
+        EventArticle.objects.create(event=event, article=self.article)
+        EventArticle.objects.create(event=event, article=gandul_article)
+
+        self.assertContains(self.client.get("/evenimente/"), event.title)
+        detail = self.client.get(f"/eveniment/{event.slug}/")
+        self.assertContains(detail, self.article.title)
+        self.assertNotContains(detail, gandul_article.title)
+        self.assertContains(self.client.get("/"), gandul_article.title)
+
+    def test_story_cards_use_today_and_full_romanian_date_labels(self):
+        self.article.published_at = timezone.now()
+        self.article.save(update_fields=["published_at"])
+
+        self.assertContains(self.client.get("/"), "Astăzi")
+
+        older = timezone.localtime(timezone.now()) - timedelta(days=2)
+        self.article.published_at = older
+        self.article.save(update_fields=["published_at"])
+        months = (
+            "", "Ianuarie", "Februarie", "Martie", "Aprilie", "Mai", "Iunie",
+            "Iulie", "August", "Septembrie", "Octombrie", "Noiembrie", "Decembrie",
+        )
+
+        self.assertContains(
+            self.client.get("/"),
+            f"{older.day} {months[older.month]} {older.year}",
+        )
+
+    def test_empty_topics_of_the_day_has_only_unpadded_heading(self):
+        response = self.client.get("/evenimente/")
+
+        self.assertContains(response, "Nu există încă subiecte astăzi.")
+        self.assertNotContains(
+            response,
+            "Subiectele apar aici după ce informațiile sunt susținute de suficiente surse.",
+        )
 
     def test_articles_from_same_public_event_are_grouped_in_feed(self):
         second_article = Article.objects.create(
@@ -687,12 +767,26 @@ class FeedInterfaceTests(TestCase):
         single_date = self.client.get(event.public_path)
         self.assertNotContains(single_date, "Cronologie")
         self.assertNotContains(single_date, "Primul moment al evenimentului.")
+        self.assertNotContains(single_date, "Pe scurt")
+
+        event.timeline.append(
+            {
+                "date": "2026-08-02T18:00:00+03:00",
+                "text": "Alt moment din aceeași zi.",
+                "article_ids": [2],
+            }
+        )
+        event.save(update_fields=["timeline"])
+
+        same_date = self.client.get(event.public_path)
+        self.assertNotContains(same_date, "Cronologie")
+        self.assertNotContains(same_date, "Alt moment din aceeași zi.")
 
         event.timeline.append(
             {
                 "date": "2026-08-03",
                 "text": "Al doilea moment al evenimentului.",
-                "article_ids": [2],
+                "article_ids": [3],
             }
         )
         event.save(update_fields=["timeline"])
@@ -988,23 +1082,9 @@ class SearchInterfaceTests(TestCase):
         self.assertContains(response, 'class="news-update-status-icon')
         self.assertContains(response, 'data-lucide="refresh-cw"')
 
-    @patch("recommendations.views.enqueue_refresh")
-    def test_refresh_starts_background_job_and_returns_to_current_page(self, enqueue):
-        response = self.client.post("/refresh/", {"next": "/search/?q=economie"})
-        self.assertRedirects(
-            response, "/search/?q=economie", fetch_redirect_response=False
-        )
-        refresh_run = RefreshRun.objects.get()
-        self.assertEqual(refresh_run.status, RefreshRun.Status.RUNNING)
-        enqueue.assert_called_once_with(refresh_run.pk)
-
-    @patch("recommendations.views.ingest_source")
-    def test_refresh_respects_recent_collection_cooldown(self, ingest):
-        self.source.last_checked_at = timezone.now()
-        self.source.save(update_fields=["last_checked_at"])
-        response = self.client.post("/refresh/", {"next": "/"})
-        self.assertRedirects(response, "/", fetch_redirect_response=False)
-        ingest.assert_not_called()
+    def test_refresh_endpoints_do_not_exist(self):
+        self.assertEqual(self.client.post("/refresh/").status_code, 404)
+        self.assertEqual(self.client.get("/refresh/1/status/").status_code, 404)
 
     def test_header_displays_latest_refresh_time(self):
         refreshed_at = timezone.now().replace(hour=9, minute=7)
@@ -1015,7 +1095,7 @@ class SearchInterfaceTests(TestCase):
         self.assertContains(response, timezone.localtime(refreshed_at).strftime("%H:%M"))
 
     def test_refresh_rejects_get(self):
-        self.assertEqual(self.client.get("/refresh/").status_code, 405)
+        self.assertEqual(self.client.get("/refresh/").status_code, 404)
 
     def test_search_finds_title_paragraph_and_source(self):
         for query in ("Inflația", "Prețurile", "Publicație Economică"):

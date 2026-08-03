@@ -36,4 +36,20 @@ def public_site_configuration(app_configs, **kwargs):
                 id="newsflow.E003",
             )
         )
+    if not settings.SECRET_KEY or settings.SECRET_KEY.startswith("django-insecure-"):
+        errors.append(
+            Error("DJANGO_SECRET_KEY is unsafe for production.", id="newsflow.E004")
+        )
+    if settings.EMAIL_BACKEND != "django.core.mail.backends.smtp.EmailBackend":
+        errors.append(
+            Error("Production email must use the SMTP backend.", id="newsflow.E005")
+        )
+    public_origin = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else ""
+    if public_origin and public_origin not in settings.CSRF_TRUSTED_ORIGINS:
+        errors.append(
+            Error(
+                "APP_PUBLIC_URL origin is missing from CSRF_TRUSTED_ORIGINS.",
+                id="newsflow.E006",
+            )
+        )
     return errors
