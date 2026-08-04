@@ -23,7 +23,10 @@ STORAGES = {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        # Compress static assets without manifest URL rewriting. A vendored
+        # Lucide bundle references an optional source map that is not shipped,
+        # which makes ManifestStaticFilesStorage fail during collectstatic.
+        "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 
