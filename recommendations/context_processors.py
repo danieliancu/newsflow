@@ -1,7 +1,11 @@
+from datetime import timedelta
+
+from django.conf import settings
 from .models import Interaction, SavedEvent
 from django.db.models import Max
+from django.utils import timezone
 from news.models import Article
-from news.models import Source
+from news.models import RefreshRun, Source
 from taxonomy.models import Category
 
 
@@ -30,4 +34,12 @@ def latest_news_refresh(request):
     latest = Source.objects.filter(is_active=True).aggregate(
         latest=Max("last_checked_at")
     )["latest"]
-    return {"latest_news_refresh": latest}
+    active_after = timezone.now() - timedelta(
+        minutes=settings.NEWSFLOW_AUTOMATIC_LOCK_TIMEOUT_MINUTES
+    )
+    running = RefreshRun.objects.filter(
+        trigger=RefreshRun.Trigger.AUTOMATIC,
+        status=RefreshRun.Status.RUNNING,
+        started_at__gte=active_after,
+    ).first()
+    return {"latest_news_refresh": latest, "running_refresh": running}

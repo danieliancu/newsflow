@@ -7,7 +7,7 @@ from django.db.utils import OperationalError
 from django.utils import timezone
 
 from accounts.models import CategoryPreference, FollowedTerm, SourcePreference, TopicPreference, User
-from news.models import Article, ArticleTopic, Event, EventArticle, Source
+from news.models import Article, ArticleTopic, Event, EventArticle, RefreshRun, Source
 from taxonomy.models import Category, Topic
 
 from .models import Interaction, OpenedEvent, Recommendation, SavedEvent
@@ -1093,6 +1093,14 @@ class SearchInterfaceTests(TestCase):
         response = self.client.get("/")
         self.assertContains(response, "Actualizat")
         self.assertContains(response, timezone.localtime(refreshed_at).strftime("%H:%M"))
+
+    def test_header_displays_running_automatic_refresh(self):
+        RefreshRun.objects.create(trigger=RefreshRun.Trigger.AUTOMATIC)
+
+        response = self.client.get("/")
+
+        self.assertContains(response, "Se actualizează…")
+        self.assertNotContains(response, "Actualizat ")
 
     def test_refresh_rejects_get(self):
         self.assertEqual(self.client.get("/refresh/").status_code, 404)

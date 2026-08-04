@@ -1655,7 +1655,7 @@ body.has-share-modal { overflow: hidden; }
 .free-account-badge {
   display: inline-flex;
   align-items: center;
-  gap: .25rem;
+  gap: .10rem;
   min-height: 1.7rem;
   padding: .2rem .5rem;
   border-radius: 999px;
