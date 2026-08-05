@@ -676,15 +676,14 @@ class EventPipelineTests(TestCase):
 
     @override_settings(OPENAI_API_KEY="test-key")
     @patch("news.event_services.OpenAI")
-    def test_generates_indexable_event_and_records_traceable_content(self, openai):
+    def test_generates_indexable_event_from_two_sources_and_records_traceable_content(self, openai):
         article_b = self._duplicate(self.source_b, "stire")
-        article_c = self._duplicate(self.source_c, "stire")
         event = Event.objects.create(
             title=self.root.title,
             status=Event.Status.PENDING,
             last_article_at=timezone.now(),
         )
-        for article in (self.root, article_b, article_c):
+        for article in (self.root, article_b):
             EventArticle.objects.create(event=event, article=article)
         original_slug = event.slug
 

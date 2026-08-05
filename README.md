@@ -99,8 +99,8 @@ care pornesc colectarea. Cererile către surse validează DNS-ul și redirectăr
 au limite configurabile. Sursele din `NEWSFLOW_EVENT_EXCLUDED_SOURCE_SLUGS` rămân
 în Revista presei, dar nu participă la construirea evenimentelor.
 
-Evenimentele cu două surse sunt accesibile cu `noindex`, iar cele cu minimum
-trei surse pot deveni indexabile. Evenimentele fără actualizări timp de șapte
+Evenimentele cu minimum două surse pot deveni indexabile. Evenimentele fără
+actualizări timp de șapte
 zile devin stabile și nu mai generează costuri AI.
 
 ## Verificare

@@ -180,7 +180,7 @@ class FeedInterfaceTests(TestCase):
             title="Eveniment important",
             status=Event.Status.INDEXABLE,
             summary="O sinteză verificată din mai multe surse.",
-            generated_source_count=3,
+            generated_source_count=2,
             last_article_at=timezone.now(),
             last_generated_at=timezone.now(),
         )
@@ -192,7 +192,7 @@ class FeedInterfaceTests(TestCase):
         self.assertContains(response, "Eveniment")
         self.assertNotContains(response, event.summary)
         self.assertContains(response, event.title)
-        self.assertContains(response, "Subiect din 3 surse")
+        self.assertContains(response, "Subiect din 2 surse")
         self.assertContains(response, f"/eveniment/{event.slug}/")
         self.assertContains(response, 'class="featured-event-image"')
         self.assertContains(response, self.article.image_url)
@@ -204,6 +204,11 @@ class FeedInterfaceTests(TestCase):
         detail = self.client.get(f"/eveniment/{event.slug}/")
         self.assertContains(detail, 'class="event-hero-image"')
         self.assertContains(detail, self.article.image_url)
+        self.assertContains(
+            detail,
+            '<meta name="robots" content="index,follow,max-image-preview:large">',
+            html=True,
+        )
 
         legacy_detail = self.client.get(f"/eveniment/{event.slug}-{event.pk}/")
         self.assertEqual(legacy_detail.status_code, 301)

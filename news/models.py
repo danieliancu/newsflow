@@ -201,7 +201,7 @@ class EventBudget(models.Model):
         max_digits=10, decimal_places=3, default=Decimal("0.025")
     )
     minimum_sources_for_creation = models.PositiveSmallIntegerField(default=2)
-    minimum_sources_for_indexing = models.PositiveSmallIntegerField(default=3)
+    minimum_sources_for_indexing = models.PositiveSmallIntegerField(default=2)
     reserved_cost_gbp = models.DecimalField(max_digits=12, decimal_places=8, default=0)
     updated_at = models.DateTimeField(auto_now=True)
 
