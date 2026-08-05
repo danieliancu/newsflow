@@ -12,6 +12,7 @@ from taxonomy.models import Category, Topic
 
 from .models import Interaction, OpenedEvent, Recommendation, SavedEvent
 from .services import ranked_feed
+from .templatetags.newsflow_tags import natural_timesince
 
 
 class FeedRankingTests(TestCase):
@@ -99,6 +100,79 @@ class FeedRankingTests(TestCase):
         self.assertEqual(result[0].feed_reason["type"], "topic")
 
     @patch("recommendations.services.RANKING_CANDIDATE_LIMIT", 1)
+    def test_broad_category_cannot_remove_quieter_followed_topic(self):
+        other_category = Category.objects.create(
+            name="Mediu", slug="mediu-echilibrat"
+        )
+        quiet_topic = Topic.objects.create(
+            category=other_category,
+            name="Climă",
+            slug="clima-echilibrat",
+        )
+        quiet_article = Article.objects.create(
+            source=self.other_source,
+            canonical_url="https://b.ro/clima",
+            title="Raport despre climă",
+            primary_category=other_category,
+            published_at=timezone.now() - timedelta(days=2),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        ArticleTopic.objects.create(article=quiet_article, topic=quiet_topic, score=5)
+        CategoryPreference.objects.create(user=self.user, category=self.category)
+        TopicPreference.objects.create(user=self.user, topic=quiet_topic)
+
+        result = ranked_feed(self.user, limit=2)
+
+        self.assertEqual(len(result), 2)
+        self.assertIn(self.relevant, result)
+        self.assertIn(quiet_article, result)
+
+    def test_each_followed_category_and_topic_gets_a_representative(self):
+        second_category = Category.objects.create(
+            name="Știință", slug="stiinta-echilibrat"
+        )
+        second_topic = Topic.objects.create(
+            category=second_category,
+            name="Spațiu",
+            slug="spatiu-echilibrat",
+        )
+        second_article = Article.objects.create(
+            source=self.other_source,
+            canonical_url="https://b.ro/spatiu",
+            title="Noutăți din spațiu",
+            primary_category=second_category,
+            published_at=timezone.now() - timedelta(days=3),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        ArticleTopic.objects.create(article=second_article, topic=second_topic, score=5)
+        CategoryPreference.objects.create(user=self.user, category=self.category)
+        CategoryPreference.objects.create(user=self.user, category=second_category)
+        TopicPreference.objects.create(user=self.user, topic=self.topic)
+        TopicPreference.objects.create(user=self.user, topic=second_topic)
+
+        result = ranked_feed(self.user, limit=2)
+
+        self.assertEqual({article.pk for article in result}, {self.relevant.pk, second_article.pk})
+
+    def test_article_matching_category_and_topic_is_not_duplicated(self):
+        CategoryPreference.objects.create(user=self.user, category=self.category)
+        TopicPreference.objects.create(user=self.user, topic=self.topic)
+
+        result = ranked_feed(self.user, limit=2)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(sum(article.pk == self.relevant.pk for article in result), 1)
+        self.assertIn(self.other, result)
+
+    def test_balanced_feed_never_exceeds_requested_limit(self):
+        CategoryPreference.objects.create(user=self.user, category=self.category)
+        TopicPreference.objects.create(user=self.user, topic=self.topic)
+
+        result = ranked_feed(self.user, limit=1)
+
+        self.assertEqual(result, [self.relevant])
+
+    @patch("recommendations.services.RANKING_CANDIDATE_LIMIT", 1)
     def test_followed_term_matches_without_diacritics_and_enters_candidates(self):
         self.relevant.title = "Inteligența artificială schimbă energia"
         self.relevant.save(update_fields=["title"])
@@ -120,6 +194,19 @@ class FeedRankingTests(TestCase):
         result = ranked_feed(self.user, personalized=False)
 
         self.assertEqual(result[0], self.other)
+
+
+class NaturalTimesinceTests(TestCase):
+    @patch("recommendations.templatetags.newsflow_tags.timesince")
+    def test_uses_natural_romanian_forms_for_one_and_two_days(self, mocked_timesince):
+        for raw_interval, expected in (
+            ("1 zi", "acum o zi"),
+            ("2 zile", "acum două zile"),
+            ("3 zile", "acum 3 zile"),
+        ):
+            with self.subTest(raw_interval=raw_interval):
+                mocked_timesince.return_value = raw_interval
+                self.assertEqual(natural_timesince(timezone.now()), expected)
 
 
 class FeedInterfaceTests(TestCase):
@@ -801,6 +888,13 @@ class FeedInterfaceTests(TestCase):
         self.assertContains(two_dates, "Primul moment al evenimentului.")
         self.assertContains(two_dates, "Al doilea moment al evenimentului.")
 
+        event.timeline[0]["date"] = "06-2026"
+        event.save(update_fields=["timeline"])
+
+        month_only = self.client.get(event.public_path)
+        self.assertContains(month_only, "iunie 2026")
+        self.assertNotContains(month_only, "06-2026")
+
     def test_event_hides_updated_label_when_generation_times_are_identical(self):
         generated_at = timezone.now()
         event = Event.objects.create(
@@ -928,6 +1022,41 @@ class AnonymousFeedFilterTests(TestCase):
         self.assertNotIn(self.other_article, response.context["articles"])
         self.assertContains(response, '<meta name="robots" content="noindex,follow">', html=True)
         self.assertEqual(response.context["canonical_url"], "http://127.0.0.1:8000/")
+
+    def test_guest_source_and_category_filters_persist_across_visits_and_can_be_reset(self):
+        selected = self.client.get(
+            "/",
+            {
+                "guest_filters_submitted": "1",
+                "preferred_sources": self.source.pk,
+                "categories": self.category.slug,
+            },
+        )
+        revisited = self.client.get("/")
+
+        for response in (selected, revisited):
+            self.assertEqual(response.context["articles"], [self.matching_article])
+            self.assertEqual(response.context["selected_source_ids"], {self.source.pk})
+            self.assertEqual(response.context["selected_category_slugs"], {self.category.slug})
+            self.assertContains(
+                response,
+                f'name="preferred_sources" value="{self.source.pk}" checked',
+            )
+            self.assertContains(
+                response,
+                f'name="categories" value="{self.category.slug}" checked',
+            )
+
+        session = self.client.session
+        self.assertEqual(session["guest_preferred_source_ids"], [self.source.pk])
+        self.assertEqual(session["guest_followed_category_slugs"], [self.category.slug])
+        self.assertLessEqual(session.get_expiry_age(), 60 * 60 * 24 * 30)
+
+        cleared = self.client.get("/", {"guest_filters_submitted": "1"})
+        self.assertFalse(cleared.context["selected_source_ids"])
+        self.assertFalse(cleared.context["selected_category_ids"])
+        self.assertIn(self.matching_article, cleared.context["articles"])
+        self.assertIn(self.other_article, cleared.context["articles"])
 
     def test_technical_pages_are_separate_and_render_the_shared_footer(self):
         pages = {
@@ -1291,6 +1420,147 @@ class SeoArchiveTests(TestCase):
                 content.index(today_article.title),
                 content.index(older_article.title),
             )
+
+    def test_logged_in_archives_hide_blocked_sources_and_prioritize_preferred_sources(self):
+        user = User.objects.create_user("arhive@example.ro", "parola-test-123")
+        preferred_source = Source.objects.create(
+            name="Publicație preferată",
+            domain="preferata.ro",
+            feed_url="https://preferata.ro/rss",
+        )
+        blocked_source = Source.objects.create(
+            name="Publicație ascunsă",
+            domain="ascunsa.ro",
+            feed_url="https://ascunsa.ro/rss",
+        )
+        preferred_article = Article.objects.create(
+            source=preferred_source,
+            canonical_url="https://preferata.ro/articol",
+            title="Articol din publicația preferată",
+            primary_category=self.category,
+            published_at=timezone.now() - timedelta(hours=2),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        recent_article = Article.objects.create(
+            source=self.source,
+            canonical_url="https://seo.ro/articol-recent-nepreferat",
+            title="Articol recent nepreferat",
+            primary_category=self.category,
+            published_at=timezone.now() - timedelta(hours=1),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        blocked_article = Article.objects.create(
+            source=blocked_source,
+            canonical_url="https://ascunsa.ro/articol",
+            title="Articol din publicația ascunsă",
+            primary_category=self.category,
+            published_at=timezone.now(),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        ArticleTopic.objects.create(article=preferred_article, topic=self.topic, score=5)
+        ArticleTopic.objects.create(article=recent_article, topic=self.topic, score=5)
+        ArticleTopic.objects.create(article=blocked_article, topic=self.topic, score=5)
+        SourcePreference.objects.create(user=user, source=preferred_source)
+        SourcePreference.objects.create(user=user, source=blocked_source, is_blocked=True)
+        self.client.force_login(user)
+
+        for path in (
+            f"/category/{self.category.slug}/",
+            f"/topic/{self.topic.slug}/",
+        ):
+            response = self.client.get(path)
+            content = response.content.decode()
+            self.assertContains(response, preferred_article.title)
+            self.assertContains(response, "Publicație preferată")
+            self.assertNotContains(response, blocked_article.title)
+            self.assertNotContains(response, blocked_source.name)
+            self.assertLess(content.index(preferred_article.title), content.index(recent_article.title))
+
+    def test_past_archive_groups_by_day_before_prioritizing_preferred_source(self):
+        user = User.objects.create_user("zile@example.ro", "parola-test-123")
+        archive_category = Category.objects.create(
+            name="Arhivă ordonată", slug="arhiva-ordonata"
+        )
+        preferred_source = Source.objects.create(
+            name="Preferată în arhivă",
+            domain="preferata-arhiva.ro",
+            feed_url="https://preferata-arhiva.ro/rss",
+        )
+        target_day = timezone.localdate() - timedelta(days=1)
+        previous_day = target_day - timedelta(days=1)
+        preferred_target = Article.objects.create(
+            source=preferred_source,
+            canonical_url="https://preferata-arhiva.ro/ziua-tinta",
+            title="Preferat din ziua țintă",
+            primary_category=archive_category,
+            published_at=timezone.now() - timedelta(days=1, hours=2),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        preferred_previous = Article.objects.create(
+            source=preferred_source,
+            canonical_url="https://preferata-arhiva.ro/ziua-anterioara",
+            title="Preferat din ziua anterioară",
+            primary_category=archive_category,
+            published_at=timezone.now() - timedelta(days=2),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        nonpreferred_target = Article.objects.create(
+            source=self.source,
+            canonical_url="https://seo.ro/ziua-tinta-nepreferat",
+            title="Nepreferat din ziua țintă",
+            primary_category=archive_category,
+            published_at=timezone.now() - timedelta(days=1, hours=1),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        SourcePreference.objects.create(user=user, source=preferred_source)
+        self.client.force_login(user)
+
+        response = self.client.get(f"/category/{archive_category.slug}/")
+        groups = response.context["previous_article_groups"]
+        target_groups = [group for group in groups if group["date"] == target_day]
+
+        self.assertEqual(len(target_groups), 1)
+        self.assertEqual(target_groups[0]["articles"][0], preferred_target)
+        self.assertIn(nonpreferred_target, target_groups[0]["articles"])
+        self.assertLess(
+            [group["date"] for group in groups].index(target_day),
+            [group["date"] for group in groups].index(previous_day),
+        )
+        self.assertIn(
+            preferred_previous,
+            next(group["articles"] for group in groups if group["date"] == previous_day),
+        )
+
+    def test_guest_preferred_sources_are_prioritized_on_archives(self):
+        preferred_source = Source.objects.create(
+            name="Preferată temporar",
+            domain="temporar.ro",
+            feed_url="https://temporar.ro/rss",
+        )
+        preferred_article = Article.objects.create(
+            source=preferred_source,
+            canonical_url="https://temporar.ro/articol",
+            title="Articol preferat temporar",
+            primary_category=self.category,
+            published_at=timezone.now() - timedelta(hours=2),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        recent_article = Article.objects.create(
+            source=self.source,
+            canonical_url="https://seo.ro/articol-recent-guest",
+            title="Articol recent nepreferat pentru vizitator",
+            primary_category=self.category,
+            published_at=timezone.now() - timedelta(hours=1),
+            processing_status=Article.ProcessingStatus.PROCESSED,
+        )
+        ArticleTopic.objects.create(article=preferred_article, topic=self.topic, score=5)
+
+        self.client.get("/", {"preferred_sources": preferred_source.pk})
+        response = self.client.get(f"/category/{self.category.slug}/")
+        content = response.content.decode()
+
+        self.assertContains(response, "Publicație preferată")
+        self.assertLess(content.index(preferred_article.title), content.index(recent_article.title))
 
     def test_paginated_archive_has_clean_self_canonical(self):
         archive_paths = (

@@ -3,6 +3,8 @@
   {% if user.is_authenticated %}
     {% csrf_token %}
     {{ preference_form.non_field_errors }}
+  {% else %}
+    <input type="hidden" name="guest_filters_submitted" value="1">
   {% endif %}
 
   <div class="filters-scroll">

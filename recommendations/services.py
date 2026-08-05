@@ -12,6 +12,39 @@ from .models import Interaction
 RANKING_CANDIDATE_LIMIT = 500
 
 
+def _balanced_personalized_results(ranked, limit, category_ids, topic_ids):
+    """Guarantee one best available representative per followed category/topic."""
+    if limit <= 0:
+        return []
+
+    uncovered = {
+        ("category", category_id) for category_id in category_ids
+    } | {("topic", topic_id) for topic_id in topic_ids}
+    representatives = []
+    representative_ids = set()
+
+    while uncovered and len(representatives) < limit:
+        representative = next(
+            (
+                article
+                for article in ranked
+                if article.id not in representative_ids
+                and article.feed_preference_keys & uncovered
+            ),
+            None,
+        )
+        if representative is None:
+            break
+        representatives.append(representative)
+        representative_ids.add(representative.id)
+        uncovered -= representative.feed_preference_keys
+
+    return (
+        representatives
+        + [article for article in ranked if article.id not in representative_ids]
+    )[:limit]
+
+
 def _normalize_match_text(value):
     value = unicodedata.normalize("NFKD", (value or "").casefold())
     value = "".join(character for character in value if not unicodedata.combining(character))
@@ -114,6 +147,25 @@ def ranked_feed(
                 :RANKING_CANDIDATE_LIMIT
             ]
         )
+        # The combined preferred query can be filled by a broad category before a
+        # quieter preference is reached. Seed one eligible candidate per followed
+        # category/topic so each can participate in the final balanced selection.
+        for category_id in category_weights:
+            representative_id = (
+                articles.filter(primary_category_id=category_id)
+                .values_list("pk", flat=True)
+                .first()
+            )
+            if representative_id:
+                candidate_ids.add(representative_id)
+        for topic_id in topic_weights:
+            representative_id = (
+                articles.filter(topic_matches__topic_id=topic_id)
+                .values_list("pk", flat=True)
+                .first()
+            )
+            if representative_id:
+                candidate_ids.add(representative_id)
 
     ranked = []
     for article in articles.filter(pk__in=candidate_ids).distinct():
@@ -132,14 +184,12 @@ def ranked_feed(
             points = 2 * source_weight
             score += points
             reasons.append({"type": "source", "name": article.source.name, "points": points})
-        matched_topic = next(
-            (
-                match.topic
-                for match in article.topic_matches.all()
-                if match.topic_id in topic_weights
-            ),
-            None,
-        )
+        matched_topics = [
+            match.topic
+            for match in article.topic_matches.all()
+            if match.topic_id in topic_weights
+        ]
+        matched_topic = next(iter(matched_topics), None)
         if matched_topic:
             matches_preferences = True
             points = 4 * topic_weights[matched_topic.pk]
@@ -173,6 +223,13 @@ def ranked_feed(
             score -= 4
             reasons.append({"type": "already_seen", "points": -4})
         article.feed_score = score
+        article.feed_preference_keys = {
+            ("topic", topic.pk) for topic in matched_topics
+        }
+        if article.primary_category_id in category_weights:
+            article.feed_preference_keys.add(
+                ("category", article.primary_category_id)
+            )
         article.feed_reasons = reasons
         article.feed_reason = next(
             (reason for reason in reasons if reason["type"] != "recency"),
@@ -189,6 +246,12 @@ def ranked_feed(
                 article.published_at or article.collected_at,
             ),
             reverse=True,
+        )
+        return _balanced_personalized_results(
+            ranked,
+            limit,
+            category_weights,
+            topic_weights,
         )
     else:
         ranked.sort(

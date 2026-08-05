@@ -52,6 +52,10 @@ def natural_timesince(value):
         return ""
     interval = timesince(value).replace(", ", " și ", 1)
     interval = interval.replace("1 oră", "o oră").replace("1\xa0oră", "o\xa0oră")
+    interval = interval.replace("1 zi", "o zi").replace("1\xa0zi", "o\xa0zi")
+    interval = interval.replace("2 zile", "două zile").replace(
+        "2\xa0zile", "două\xa0zile"
+    )
     if interval in {"0 minute", "0\xa0minute"}:
         return "chiar acum"
     return f"acum {interval}"

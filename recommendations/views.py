@@ -11,7 +11,8 @@ from django.contrib import messages
 from django.conf import settings
 from django.db import transaction
 from django.db.utils import OperationalError
-from django.db.models import Count, Max, Q, Sum
+from django.db.models import Case, Count, IntegerField, Max, Q, Sum, Value, When
+from django.db.models.functions import Coalesce, TruncDate
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -39,6 +40,7 @@ ROMANIAN_MONTHS = (
     "", "ianuarie", "februarie", "martie", "aprilie", "mai", "iunie",
     "iulie", "august", "septembrie", "octombrie", "noiembrie", "decembrie",
 )
+GUEST_FILTER_SESSION_AGE = 60 * 60 * 24 * 30
 
 
 def _event_timeline_for_display(timeline):
@@ -46,13 +48,22 @@ def _event_timeline_for_display(timeline):
     for item in timeline or []:
         displayed_item = dict(item)
         raw_date = item.get("date", "")
-        try:
-            parsed = date.fromisoformat(str(raw_date)[:10])
-            displayed_item["display_date"] = (
-                f"{parsed.day} {ROMANIAN_MONTHS[parsed.month]} {parsed.year}"
-            )
-        except (TypeError, ValueError):
-            displayed_item["display_date"] = raw_date
+        month_year_match = re.fullmatch(r"(0?[1-9]|1[0-2])-(\d{4})", str(raw_date))
+        year_month_match = re.fullmatch(r"(\d{4})-(0?[1-9]|1[0-2])", str(raw_date))
+        if month_year_match:
+            month, year = map(int, month_year_match.groups())
+            displayed_item["display_date"] = f"{ROMANIAN_MONTHS[month]} {year}"
+        elif year_month_match:
+            year, month = map(int, year_month_match.groups())
+            displayed_item["display_date"] = f"{ROMANIAN_MONTHS[month]} {year}"
+        else:
+            try:
+                parsed = date.fromisoformat(str(raw_date)[:10])
+                displayed_item["display_date"] = (
+                    f"{parsed.day} {ROMANIAN_MONTHS[parsed.month]} {parsed.year}"
+                )
+            except (TypeError, ValueError):
+                displayed_item["display_date"] = raw_date
         displayed.append(displayed_item)
     return displayed
 
@@ -313,18 +324,54 @@ def _saved_event_ids(request):
     return set(request.user.saved_events.values_list("event_id", flat=True))
 
 
-def _archive_navigation():
+def _archive_preference_ids(request):
+    if request.user.is_authenticated:
+        preferred_ids = set(
+            request.user.source_preferences.filter(is_blocked=False).values_list(
+                "source_id", flat=True
+            )
+        )
+        blocked_ids = set(
+            request.user.source_preferences.filter(is_blocked=True).values_list(
+                "source_id", flat=True
+            )
+        )
+        hidden_ids = set(
+            request.user.interactions.filter(kind=Interaction.Kind.HIDDEN).values_list(
+                "article_id", flat=True
+            )
+        )
+        return preferred_ids, blocked_ids, hidden_ids
+
+    requested_ids = [
+        value for value in request.GET.getlist("preferred_sources") if value.isdigit()
+    ]
+    if requested_ids:
+        preferred_ids = set(
+            Source.objects.filter(is_active=True, pk__in=requested_ids).values_list(
+                "pk", flat=True
+            )
+        )
+        request.session["guest_preferred_source_ids"] = sorted(preferred_ids)
+        request.session.set_expiry(GUEST_FILTER_SESSION_AGE)
+    else:
+        preferred_ids = set(request.session.get("guest_preferred_source_ids", []))
+    return preferred_ids, set(), set()
+
+
+def _archive_navigation(blocked_source_ids=None):
+    blocked_source_ids = blocked_source_ids or set()
     articles = Article.objects.filter(
         processing_status=Article.ProcessingStatus.PROCESSED,
         duplicate_of__isnull=True,
-    )
+    ).exclude(source_id__in=blocked_source_ids)
     return {
         "archive_categories": Category.objects.filter(
             is_active=True, articles__in=articles
         ).distinct(),
         "archive_sources": Source.objects.filter(
             is_active=True, articles__in=articles
-        ).distinct(),
+        ).exclude(pk__in=blocked_source_ids).distinct(),
         "archive_topics": Topic.objects.filter(
             is_active=True, article_matches__article__in=articles
         ).distinct(),
@@ -334,7 +381,29 @@ def _archive_navigation():
 def _archive_response(
     request, entity, archive_type, queryset, title, description, extra_context=None
 ):
-    ordered_queryset = queryset.order_by("-published_at", "-collected_at")
+    preferred_source_ids, blocked_source_ids, hidden_article_ids = (
+        _archive_preference_ids(request)
+    )
+    queryset = queryset.exclude(source_id__in=blocked_source_ids).exclude(
+        pk__in=hidden_article_ids
+    )
+    if preferred_source_ids:
+        queryset = queryset.annotate(
+            archive_day=TruncDate(Coalesce("published_at", "collected_at")),
+            preferred_source_order=Case(
+                When(source_id__in=preferred_source_ids, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        )
+        ordered_queryset = queryset.order_by(
+            "-archive_day",
+            "preferred_source_order",
+            "-published_at",
+            "-collected_at",
+        )
+    else:
+        ordered_queryset = queryset.order_by("-published_at", "-collected_at")
     today = timezone.localdate()
     current_articles_query = ordered_queryset.filter(published_at__date=today)
     current_article_ids = list(current_articles_query.values_list("pk", flat=True))
@@ -342,6 +411,9 @@ def _archive_response(
     page_obj = Paginator(previous_articles_query, 24).get_page(request.GET.get("page"))
     current_articles = list(current_articles_query) if page_obj.number == 1 else []
     previous_articles = list(page_obj.object_list)
+    for article in current_articles + previous_articles:
+        if article.source_id in preferred_source_ids:
+            article.feed_reason = {"type": "preferred_source"}
     previous_article_groups = []
     for article in previous_articles:
         timestamp = article.published_at or article.collected_at
@@ -430,7 +502,7 @@ def _archive_response(
             "<", "\\u003c"
         ),
     }
-    context.update(_archive_navigation())
+    context.update(_archive_navigation(blocked_source_ids))
     if archive_type == "topic" and page_obj.number == 1:
         context["topic_events"] = _with_representative_images(
             Event.objects.filter(
@@ -769,15 +841,33 @@ def feed(request):
     selected_topic_ids = set()
     selected_topic = None
     if not request.user.is_authenticated:
-        requested_category_slugs = [
-            value for value in request.GET.getlist("categories") if value
-        ]
+        filters_submitted = (
+            request.GET.get("guest_filters_submitted") == "1"
+            or any(
+                key in request.GET
+                for key in ("categories", "preferred_sources", "topic")
+            )
+        )
+        if filters_submitted:
+            requested_category_slugs = [
+                value for value in request.GET.getlist("categories") if value
+            ]
+            requested_source_ids = [
+                value
+                for value in request.GET.getlist("preferred_sources")
+                if value.isdigit()
+            ]
+        else:
+            requested_category_slugs = list(
+                request.session.get("guest_followed_category_slugs", [])
+            )
+            requested_source_ids = [
+                str(value)
+                for value in request.session.get("guest_preferred_source_ids", [])
+            ]
         selected_categories = Category.objects.filter(
             is_active=True, slug__in=requested_category_slugs
         )
-        requested_source_ids = [
-            value for value in request.GET.getlist("preferred_sources") if value.isdigit()
-        ]
         selected_category_ids = set(selected_categories.values_list("pk", flat=True))
         selected_category_slugs = set(selected_categories.values_list("slug", flat=True))
         selected_source_ids = set(
@@ -785,6 +875,12 @@ def feed(request):
                 is_active=True, pk__in=requested_source_ids
             ).values_list("pk", flat=True)
         )
+        if filters_submitted:
+            request.session["guest_followed_category_slugs"] = sorted(
+                selected_category_slugs
+            )
+            request.session["guest_preferred_source_ids"] = sorted(selected_source_ids)
+            request.session.set_expiry(GUEST_FILTER_SESSION_AGE)
         for topic_slug in request.GET.getlist("topic"):
             selected_topic = Topic.objects.filter(
                 is_active=True, slug=topic_slug
@@ -828,7 +924,11 @@ def feed(request):
         "saved_ids": saved_ids,
         "featured_events": _with_representative_images(_topics_of_day_events()[:9]),
         "canonical_url": _public_url(request.path),
-        "robots_value": "noindex,follow" if request.GET else "index,follow",
+        "robots_value": (
+            "noindex,follow"
+            if request.GET or selected_category_ids or selected_source_ids
+            else "index,follow"
+        ),
         "og_title": "Newsflow · Știrile tale, fără zgomot",
         "og_description": "Cele mai recente știri din România, organizate pe categorii și publicații.",
     }

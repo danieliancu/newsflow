@@ -28,9 +28,10 @@
     <span>{{ article_date|date:"H:i" }}</span>
   </div>
   {% endwith %}
-  {% if user.is_authenticated and article.feed_reason %}
+  {% if article.feed_reason %}
     <p class="recommendation-reason">
-      {% if article.feed_reason.type == "source" %}{% translate "Pentru că urmărești" %} {{ article.feed_reason.name }}
+      {% if article.feed_reason.type == "preferred_source" %}{% translate "Publicație preferată" %}
+      {% elif article.feed_reason.type == "source" %}{% translate "Pentru că urmărești" %} {{ article.feed_reason.name }}
       {% elif article.feed_reason.type == "category" %}{% translate "Din categoria urmărită" %} {{ article.feed_reason.name }}
       {% elif article.feed_reason.type == "topic" %}{% translate "Subiect urmărit:" %} {{ article.feed_reason.name }}
       {% elif article.feed_reason.type == "term" %}{% translate "Termeni urmăriți:" %} {{ article.feed_reason.name }}

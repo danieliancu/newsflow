@@ -64,8 +64,13 @@
       if (indicator) indicator.checked = options.some((option) => option.checked);
     };
     indicator?.addEventListener("click", (event) => {
-      event.preventDefault();
       event.stopPropagation();
+    });
+    indicator?.addEventListener("change", () => {
+      const topicOptions = section.querySelector("[data-guest-topic-options]");
+      options.forEach((option, index) => {
+        option.checked = indicator.checked && (!topicOptions || index === 0);
+      });
     });
     section.querySelector("[data-guest-locked-indicator]")?.addEventListener("click", (event) => {
       event.preventDefault();
