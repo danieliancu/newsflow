@@ -1736,6 +1736,7 @@ class SeoArchiveTests(TestCase):
 
     def test_sitemap_and_robots_use_public_url(self):
         sitemap = self.client.get("/sitemap.xml")
+        self.assertContains(sitemap, "https://newsflow.example/evenimente/")
         self.assertContains(
             sitemap, f"https://newsflow.example/category/{self.category.slug}/"
         )

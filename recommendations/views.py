@@ -1139,7 +1139,13 @@ def sitemap(request):
         (
             _public_url(reverse("feed")),
             homepage_dates["latest_published"] or homepage_dates["latest_collected"],
-        )
+        ),
+        (
+            _public_url(reverse("events_archive")),
+            Event.objects.filter(
+                status__in=[Event.Status.INDEXABLE, Event.Status.STABLE]
+            ).aggregate(latest=Max("last_generated_at"))["latest"],
+        ),
     ]
     entries.extend(
         (_public_url(reverse(route_name)), None)
