@@ -139,7 +139,7 @@
   {% if not user.is_authenticated %}
     <section class="guest-conversion-card">
       <h3>{% translate "Transformă Newsflow în fluxul tău personal" %}</h3>
-      <p>{% translate "Urmărește subiecte și termeni, ascunde publicațiile și păstrează preferințele pe toate dispozitivele." %}</p>
+      <p>{% translate "Urmărește subiecte și termeni, ascunde publicațiile nedorite și păstrează preferințele pe toate dispozitivele." %}</p>
       <a class="button guest-login-invite" href="{% url 'register' %}?next={{ guest_auth_next|urlencode }}" data-login-modal-open data-benefit-message="Explorează fără cont. Personalizează și păstrează cu un cont gratuit.">{% translate "Creează fluxul meu personalizat" %}</a>
       <a class="guest-login-link" href="{% url 'login' %}?next={{ guest_auth_next|urlencode }}">{% translate "Am deja cont" %}</a>
     </section>

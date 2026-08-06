@@ -1487,3 +1487,20 @@ def set_display_mode(request):
     if _wants_json(request):
         return JsonResponse({"mode": mode})
     return redirect("account_dashboard")
+
+
+@require_POST
+@login_required
+def set_events_display_mode(request):
+    mode = request.POST.get("mode")
+    valid_modes = {
+        request.user.EventsDisplayMode.CARDS,
+        request.user.EventsDisplayMode.COMPACT,
+    }
+    if mode not in valid_modes:
+        return JsonResponse({"error": "Mod invalid."}, status=400)
+    User.objects.filter(pk=request.user.pk).update(events_display_mode=mode)
+    request.user.events_display_mode = mode
+    if _wants_json(request):
+        return JsonResponse({"mode": mode})
+    return redirect("feed")

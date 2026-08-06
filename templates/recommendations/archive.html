@@ -38,9 +38,7 @@
           {% for article in current_articles %}
             {% include "recommendations/_story_card.html" with story_card_class="story--archive-card" %}
           {% empty %}
-            <section class="empty archive-day-empty">
-              <h2>{% translate "Nu există încă articole astăzi." %}</h2>
-            </section>
+            {% include "recommendations/_today_articles_empty.html" %}
           {% endfor %}
         </div>
       </section>

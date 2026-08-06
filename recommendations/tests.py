@@ -387,10 +387,11 @@ class FeedInterfaceTests(TestCase):
             f"{older.day} {months[older.month]} {older.year}",
         )
 
-    def test_empty_topics_of_the_day_has_only_unpadded_heading(self):
+    def test_empty_topics_of_the_day_reuses_category_empty_state(self):
         response = self.client.get("/evenimente/")
 
-        self.assertContains(response, "Nu există încă subiecte astăzi.")
+        self.assertContains(response, "Nu există încă articole astăzi.")
+        self.assertContains(response, 'class="empty archive-day-empty"')
         self.assertNotContains(
             response,
             "Subiectele apar aici după ce informațiile sunt susținute de suficiente surse.",
@@ -436,8 +437,12 @@ class FeedInterfaceTests(TestCase):
 
         self.assertContains(response, "data-carousel-slide aria-hidden", count=5)
         self.assertContains(response, "featured-event--compact", count=4)
-        self.assertContains(response, "data-carousel-previous")
-        self.assertContains(response, "data-carousel-next")
+        self.assertNotContains(response, "data-carousel-previous")
+        self.assertNotContains(response, "data-carousel-next")
+        self.assertContains(response, "data-events-display=\"cards\"")
+        self.assertContains(response, "data-events-display=\"compact\"")
+        self.assertContains(response, "newsflow-events-display-mode")
+        self.assertContains(response, "Subiectele zilei</h1><i data-lucide=\"arrow-right\"")
         self.assertContains(response, "show(index + 1, 1), 5000")
 
         latest_response = self.client.get("/?view=latest")
@@ -453,6 +458,29 @@ class FeedInterfaceTests(TestCase):
         )
         self.assertContains(filtered_response, "data-event-carousel")
         self.assertContains(filtered_response, "Eveniment 0")
+
+    def test_authenticated_events_display_mode_is_persisted(self):
+        response = self.client.post(
+            "/account/events-display-mode/",
+            {"mode": "compact"},
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"mode": "compact"})
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.events_display_mode, "compact")
+
+    def test_invalid_events_display_mode_is_rejected(self):
+        response = self.client.post(
+            "/account/events-display-mode/",
+            {"mode": "auto"},
+            HTTP_ACCEPT="application/json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.events_display_mode, "auto")
 
     def test_homepage_events_show_updated_date_after_new_public_activity(self):
         generated_at = timezone.now() - timedelta(hours=2)

@@ -27,9 +27,7 @@
         {% for event in current_events %}
           {% include "recommendations/_event_card.html" %}
         {% empty %}
-          <section class="empty events-empty">
-            <h2>{% translate "Nu există încă subiecte astăzi." %}</h2>
-          </section>
+          {% include "recommendations/_today_articles_empty.html" %}
         {% endfor %}
       </div>
     {% endif %}

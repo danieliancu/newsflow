@@ -19,18 +19,25 @@
     {% include "accounts/_preference_form.html" %}
   </aside>
   <div class="feed-column">
-    <div class="section-heading-row">
-      <div>
-        <h1 class="eyebrow">{% translate "Subiectele zilei" %}</h1>
+    <div class="events-home-block">
+      <div class="section-heading-row">
+        <a class="section-all-link events-heading-link" href="{% url 'events_archive' %}">
+          <h1 class="eyebrow">{% translate "Subiectele zilei" %}</h1><i data-lucide="arrow-right" aria-hidden="true"></i>
+        </a>
+        <div class="feed-image-toggle events-display-toggle" role="group" aria-label="{% translate 'Stilul subiectelor zilei' %}">
+          {% if user.is_authenticated %}<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">{% endif %}
+          <button class="feed-image-toggle-button is-active" type="button" data-events-display="cards" aria-pressed="true" aria-label="{% translate 'Carduri cu fotografii' %}" title="{% translate 'Carduri cu fotografii' %}">
+            <i data-lucide="grid-3x3" aria-hidden="true"></i>
+          </button>
+          <button class="feed-image-toggle-button" type="button" data-events-display="compact" aria-pressed="false" aria-label="{% translate 'Stil compact, fără fotografii' %}" title="{% translate 'Stil compact, fără fotografii' %}">
+            <i data-lucide="list" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
-      <a class="section-all-link" href="{% url 'events_archive' %}">
-        {% translate "Vezi toate subiectele" %}<i data-lucide="arrow-right" aria-hidden="true"></i>
-      </a>
-    </div>
-    {% if featured_events %}
-      <section class="homepage-events" aria-label="{% translate 'Subiectele zilei' %}">
-        <div class="featured-events-grid">
-          <div class="featured-event-carousel" data-event-carousel>
+      {% if featured_events %}
+        <section class="homepage-events" aria-label="{% translate 'Subiectele zilei' %}">
+          <div class="featured-events-grid">
+            <div class="featured-event-carousel" data-event-carousel>
             {% for event in featured_events|slice:":5" %}
               <article class="featured-event featured-event--lead carousel-slide{% if forloop.first %} is-active{% endif %}" data-carousel-slide aria-hidden="{% if forloop.first %}false{% else %}true{% endif %}">
                 {% if event.representative_image_url %}
@@ -51,14 +58,8 @@
                 </div>
               </article>
             {% endfor %}
-            {% if featured_events|length > 1 %}
-              <div class="carousel-controls">
-                <button type="button" data-carousel-previous aria-label="{% translate 'Subiectul anterior' %}"><i data-lucide="arrow-left"></i></button>
-                <button type="button" data-carousel-next aria-label="{% translate 'Subiectul următor' %}"><i data-lucide="arrow-right"></i></button>
-              </div>
-            {% endif %}
-          </div>
-          {% for event in featured_events|slice:"5:9" %}
+            </div>
+            {% for event in featured_events|slice:"5:9" %}
             <article class="featured-event featured-event--compact">
               <h2><a href="{% url 'event_detail' event.slug %}">{{ event.title }}</a></h2>
               <footer>
@@ -70,10 +71,11 @@
                 {% endif %}
               </footer>
             </article>
-          {% endfor %}
-        </div>
-      </section>
-    {% endif %}
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+    </div>
     {% if user.is_authenticated %}
       <div class="personal-feed-toolbar">
         <nav aria-label="{% translate 'Tipul fluxului' %}">
@@ -296,10 +298,54 @@
   (() => {
     const carousel = document.querySelector("[data-event-carousel]");
     if (!carousel) return;
+    const eventsSection = carousel.closest(".homepage-events");
+    const eventsBlock = carousel.closest(".events-home-block");
+    const displayButtons = [...document.querySelectorAll("[data-events-display]")];
+    const displayPreferenceKey = "newsflow-events-display-mode";
+    const accountDisplayEndpoint = "{% if user.is_authenticated %}{% url 'set_events_display_mode' %}{% endif %}";
+    const accountDisplayMode = "{% if user.is_authenticated %}{{ user.events_display_mode }}{% else %}auto{% endif %}";
     const slides = [...carousel.querySelectorAll("[data-carousel-slide]")];
-    if (slides.length < 2) return;
     let index = 0;
     let timer;
+    const setDisplayMode = (mode) => {
+      const compact = mode === "compact";
+      eventsSection?.classList.toggle("homepage-events--compact", compact);
+      eventsBlock?.classList.toggle("events-home-block--compact", compact);
+      displayButtons.forEach((button) => {
+        const active = button.dataset.eventsDisplay === mode;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
+    };
+    let savedDisplayMode = accountDisplayMode === "auto" ? undefined : accountDisplayMode;
+    {% if not user.is_authenticated %}
+    try { savedDisplayMode = window.localStorage.getItem(displayPreferenceKey); } catch (error) {}
+    {% endif %}
+    const initialDisplayMode = savedDisplayMode || (window.matchMedia("(max-width: 600px)").matches ? "compact" : "cards");
+    setDisplayMode(initialDisplayMode === "compact" ? "compact" : "cards");
+    displayButtons.forEach((button) => button.addEventListener("click", async () => {
+      const mode = button.dataset.eventsDisplay;
+      setDisplayMode(mode);
+      {% if user.is_authenticated %}
+      const csrfToken = document.querySelector(".events-display-toggle [name=csrfmiddlewaretoken]")?.value;
+      const formData = new FormData();
+      formData.set("mode", mode);
+      try {
+        const response = await fetch(accountDisplayEndpoint, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {"Accept": "application/json", "X-CSRFToken": csrfToken},
+          body: formData,
+        });
+        if (!response.ok) throw new Error("Request failed");
+      } catch (error) {
+        setDisplayMode(mode === "compact" ? "cards" : "compact");
+      }
+      {% else %}
+      try { window.localStorage.setItem(displayPreferenceKey, mode); } catch (error) {}
+      {% endif %}
+    }));
+    if (slides.length < 2) return;
     const show = (nextIndex, direction = 1) => {
       const outgoing = slides[index];
       const incomingIndex = (nextIndex + slides.length) % slides.length;
@@ -325,14 +371,6 @@
       window.clearInterval(timer);
       timer = window.setInterval(() => show(index + 1, 1), 5000);
     };
-    carousel.querySelector("[data-carousel-previous]")?.addEventListener("click", () => {
-      show(index - 1, -1);
-      restart();
-    });
-    carousel.querySelector("[data-carousel-next]")?.addEventListener("click", () => {
-      show(index + 1, 1);
-      restart();
-    });
     carousel.addEventListener("mouseenter", () => window.clearInterval(timer));
     carousel.addEventListener("mouseleave", restart);
     restart();

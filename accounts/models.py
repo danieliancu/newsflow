@@ -37,6 +37,11 @@ class User(AbstractUser):
         CARDS = "cards", "Carduri"
         COMPACT = "compact", "Compact"
 
+    class EventsDisplayMode(models.TextChoices):
+        AUTO = "auto", "Automat"
+        CARDS = "cards", "Carduri"
+        COMPACT = "compact", "Compact"
+
     username = None
     email = models.EmailField("email", unique=True)
     last_feed_seen_at = models.DateTimeField(null=True, blank=True)
@@ -49,6 +54,11 @@ class User(AbstractUser):
         max_length=10,
         choices=FeedDisplayMode.choices,
         default=FeedDisplayMode.COMPACT,
+    )
+    events_display_mode = models.CharField(
+        max_length=10,
+        choices=EventsDisplayMode.choices,
+        default=EventsDisplayMode.AUTO,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

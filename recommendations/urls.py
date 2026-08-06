@@ -35,6 +35,7 @@ urlpatterns = [
     path("article/<int:article_id>/restore/", views.restore_article, name="restore_article"),
     path("source/<int:source_id>/restore/", views.restore_source, name="restore_source"),
     path("account/display-mode/", views.set_display_mode, name="set_display_mode"),
+    path("account/events-display-mode/", views.set_events_display_mode, name="set_events_display_mode"),
     path("sursa/<slug:slug>/", views.legacy_source_archive, name="legacy_source_archive"),
     path("subiect/<slug:slug>/", views.legacy_topic_archive, name="legacy_topic_archive"),
     path("cautare/", views.legacy_search_results, name="legacy_search_results"),
