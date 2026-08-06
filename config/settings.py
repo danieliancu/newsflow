@@ -94,6 +94,7 @@ TEMPLATES = [
                 'recommendations.context_processors.saved_news_count',
                 'recommendations.context_processors.navigation_categories',
                 'recommendations.context_processors.latest_news_refresh',
+                'recommendations.context_processors.analytics_settings',
             ],
         },
     },
@@ -184,6 +185,7 @@ EMAIL_USE_SSL = os.getenv("EMAIL_USE_SSL", "false").lower() in {"1", "true", "ye
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Newsflow <no-reply@localhost>")
 APP_PUBLIC_URL = os.getenv("APP_PUBLIC_URL", "http://127.0.0.1:8000")
 PUBLIC_CONTACT_EMAIL = os.getenv("PUBLIC_CONTACT_EMAIL", "").strip()
+GOOGLE_ANALYTICS_ID = os.getenv("GOOGLE_ANALYTICS_ID", "G-DDT1Z5SD9L").strip()
 
 # Production defaults are secure. Set DJANGO_DEBUG=true only for local development.
 if not DEBUG:

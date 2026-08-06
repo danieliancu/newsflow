@@ -148,6 +148,7 @@ TECHNICAL_PAGES = {
         "sections": [
             ("Cookie-uri esențiale", "Sunt necesare pentru autentificare, securitate și păstrarea sesiunii active."),
             ("Preferințe locale", "Browserul poate memora alegeri precum închiderea unei invitații, pentru a evita afișarea ei repetată."),
+            ("Google Analytics", "Cu acordul tău, folosim Google Analytics pentru statistici agregate despre vizite și modul de utilizare a site-ului. Poți refuza sau modifica alegerea în orice moment din Setări cookie."),
         ],
     },
     "contact": {

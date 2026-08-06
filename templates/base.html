@@ -5,6 +5,34 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-site-verification" content="KmZqs1jBGYgkrnd7Ns8AyPxfcAFxf0LbLSPXKxB0rL0">
+  {% if google_analytics_id %}
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag("consent", "default", {
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      analytics_storage: "denied",
+    });
+    window.newsflowLoadAnalytics = () => {
+      if (document.querySelector("script[data-google-analytics]")) return;
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://www.googletagmanager.com/gtag/js?id={{ google_analytics_id|escapejs }}";
+      script.dataset.googleAnalytics = "true";
+      document.head.appendChild(script);
+      gtag("js", new Date());
+      gtag("config", "{{ google_analytics_id|escapejs }}");
+    };
+    try {
+      if (window.localStorage.getItem("newsflow-analytics-consent") === "granted") {
+        gtag("consent", "update", {analytics_storage: "granted"});
+        window.newsflowLoadAnalytics();
+      }
+    } catch (error) {}
+  </script>
+  {% endif %}
   <link rel="icon" href="{% static 'favicon.svg' %}" type="image/svg+xml">
   <title>{% block title %}Newsflow{% endblock %}</title>
   {% block meta_description %}<meta name="description" content="Cele mai recente știri din România, organizate pe categorii și publicații.">{% endblock %}
@@ -143,6 +171,7 @@
         <a href="{% url 'terms' %}">{% translate "Termeni" %}</a>
         <a href="{% url 'privacy' %}">{% translate "Confidențialitate" %}</a>
         <a href="{% url 'cookies' %}">{% translate "Cookie-uri" %}</a>
+        {% if google_analytics_id %}<button class="footer-cookie-settings" type="button" data-cookie-settings>{% translate "Setări cookie" %}</button>{% endif %}
         <a href="{% url 'contact' %}">{% translate "Contact" %}</a>
       </nav>
       <span class="footer-copyright">© {% now "Y" %} Newsflow</span>
@@ -163,10 +192,41 @@
     <span data-toast-message></span>
     <button type="button" data-toast-undo hidden>{% translate "Anulează" %}</button>
   </div>
+  {% if google_analytics_id %}
+    <aside class="cookie-consent" data-cookie-consent hidden aria-labelledby="cookie-consent-title">
+      <div>
+        <h2 id="cookie-consent-title">{% translate "Cookie-uri analitice" %}</h2>
+        <p>{% translate "Folosim Google Analytics pentru a înțelege cum este utilizat site-ul. Cookie-urile analitice sunt opționale." %} <a href="{% url 'cookies' %}">{% translate "Află mai multe" %}</a>.</p>
+      </div>
+      <div class="cookie-consent-actions">
+        <button class="cookie-reject-button" type="button" data-cookie-consent-choice="denied">{% translate "Refuz" %}</button>
+        <button class="button" type="button" data-cookie-consent-choice="granted">{% translate "Accept" %}</button>
+      </div>
+    </aside>
+  {% endif %}
   <script src="{% static 'vendor/lucide/lucide.min.js' %}"></script>
   {% if not user.is_authenticated %}<script src="{% static 'js/guest-personalization.js' %}"></script>{% endif %}
   <script>
     lucide.createIcons();
+    const cookieConsent = document.querySelector("[data-cookie-consent]");
+    if (cookieConsent) {
+      const consentKey = "newsflow-analytics-consent";
+      let savedConsent = null;
+      try { savedConsent = window.localStorage.getItem(consentKey); } catch (error) {}
+      cookieConsent.hidden = savedConsent === "granted" || savedConsent === "denied";
+      document.querySelectorAll("[data-cookie-settings]").forEach((button) => {
+        button.addEventListener("click", () => { cookieConsent.hidden = false; });
+      });
+      cookieConsent.querySelectorAll("[data-cookie-consent-choice]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const choice = button.dataset.cookieConsentChoice;
+          try { window.localStorage.setItem(consentKey, choice); } catch (error) {}
+          gtag("consent", "update", {analytics_storage: choice});
+          if (choice === "granted") window.newsflowLoadAnalytics();
+          cookieConsent.hidden = true;
+        });
+      });
+    }
     const logoutModal = document.querySelector("[data-logout-modal]");
     document.addEventListener("click", (event) => {
       if (event.target.closest("[data-logout-modal-open]") && logoutModal) {

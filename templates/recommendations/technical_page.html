@@ -19,6 +19,9 @@
         </section>
       {% endfor %}
     </div>
+    {% if request.resolver_match.url_name == "cookies" and google_analytics_id %}
+      <button class="button technical-cookie-settings" type="button" data-cookie-settings>{% translate "Modifică setările cookie" %}</button>
+    {% endif %}
     <p class="technical-page-note">{% translate "Ultima actualizare: 31 iulie 2026." %}</p>
   </article>
 {% endblock %}

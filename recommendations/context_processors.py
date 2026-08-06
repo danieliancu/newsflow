@@ -43,3 +43,7 @@ def latest_news_refresh(request):
         started_at__gte=active_after,
     ).first()
     return {"latest_news_refresh": latest, "running_refresh": running}
+
+
+def analytics_settings(request):
+    return {"google_analytics_id": settings.GOOGLE_ANALYTICS_ID}

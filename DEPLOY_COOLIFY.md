@@ -7,7 +7,7 @@ This branch is prepared for a Nixpacks deployment on Coolify.
 - Build pack: `Nixpacks`
 - Base directory: `/`
 - Port: `8000`
-- Domain: `https://app.newsflow.ro`
+- Domain: `https://www.newsflow.ro`
 - Branch: `coolify-deploy`
 - Install, build and start commands: leave empty; `nixpacks.toml` starts `scripts/start.sh`.
 
@@ -34,10 +34,11 @@ Set these as runtime environment variables in Coolify. Do not commit real secret
 DJANGO_SETTINGS_MODULE=config.production
 DJANGO_DEBUG=false
 DJANGO_SECRET_KEY=replace-with-a-long-random-secret
-DJANGO_ALLOWED_HOSTS=app.newsflow.ro
-DJANGO_CSRF_TRUSTED_ORIGINS=https://app.newsflow.ro
-APP_PUBLIC_URL=https://app.newsflow.ro
+DJANGO_ALLOWED_HOSTS=newsflow.ro,www.newsflow.ro
+DJANGO_CSRF_TRUSTED_ORIGINS=https://newsflow.ro,https://www.newsflow.ro
+APP_PUBLIC_URL=https://www.newsflow.ro
 PUBLIC_CONTACT_EMAIL=office@newsflow.ro
+GOOGLE_ANALYTICS_ID=G-DDT1Z5SD9L
 TIME_ZONE=Europe/London
 
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
