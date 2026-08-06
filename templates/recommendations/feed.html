@@ -58,6 +58,12 @@
                 </div>
               </article>
             {% endfor %}
+            {% if featured_events|length > 1 %}
+              <div class="carousel-controls">
+                <button type="button" data-carousel-previous aria-label="{% translate 'Subiectul anterior' %}"><i data-lucide="arrow-left" aria-hidden="true"></i></button>
+                <button type="button" data-carousel-next aria-label="{% translate 'Subiectul următor' %}"><i data-lucide="arrow-right" aria-hidden="true"></i></button>
+              </div>
+            {% endif %}
             </div>
             {% for event in featured_events|slice:"5:9" %}
             <article class="featured-event featured-event--compact">
@@ -371,6 +377,14 @@
       window.clearInterval(timer);
       timer = window.setInterval(() => show(index + 1, 1), 5000);
     };
+    carousel.querySelector("[data-carousel-previous]")?.addEventListener("click", () => {
+      show(index - 1, -1);
+      restart();
+    });
+    carousel.querySelector("[data-carousel-next]")?.addEventListener("click", () => {
+      show(index + 1, 1);
+      restart();
+    });
     carousel.addEventListener("mouseenter", () => window.clearInterval(timer));
     carousel.addEventListener("mouseleave", restart);
     restart();

@@ -437,8 +437,8 @@ class FeedInterfaceTests(TestCase):
 
         self.assertContains(response, "data-carousel-slide aria-hidden", count=5)
         self.assertContains(response, "featured-event--compact", count=4)
-        self.assertNotContains(response, "data-carousel-previous")
-        self.assertNotContains(response, "data-carousel-next")
+        self.assertContains(response, "data-carousel-previous")
+        self.assertContains(response, "data-carousel-next")
         self.assertContains(response, "data-events-display=\"cards\"")
         self.assertContains(response, "data-events-display=\"compact\"")
         self.assertContains(response, "newsflow-events-display-mode")
