@@ -1041,3 +1041,8 @@ class EventPipelineTests(TestCase):
                 "Financial Intelligence indică 3 reactoare, iar G4Media indică 4 reactoare."
             )
         )
+        self.assertFalse(
+            difference_is_material_conflict(
+                "Europa FM și Digi24 spun că proiectul revine la Senat; nu există o contradicție materială."
+            )
+        )

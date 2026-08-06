@@ -420,13 +420,19 @@ SOURCE_OMISSION_PATTERNS = (
     re.compile(r"\b(?:lipsește|lipsesc|absent(?:ă|e)?)\b", re.IGNORECASE),
 )
 
+NON_CONFLICT_PATTERNS = (
+    re.compile(r"\bnu (?:există|este|reprezintă) (?:o )?contradicție(?: materială)?\b", re.IGNORECASE),
+    re.compile(r"\bfără (?:nicio )?contradicție(?: materială)?\b", re.IGNORECASE),
+    re.compile(r"\b(?:informații|afirmații|formulări) (?:echivalente|compatibile)\b", re.IGNORECASE),
+)
+
 
 def difference_is_material_conflict(text):
-    """Reject source differences that describe omission instead of conflicting claims."""
+    """Reject differences that explicitly describe omissions or compatible claims."""
     normalized = " ".join(str(text or "").split())
     return bool(normalized) and not any(
         pattern.search(normalized) for pattern in SOURCE_OMISSION_PATTERNS
-    )
+    ) and not any(pattern.search(normalized) for pattern in NON_CONFLICT_PATTERNS)
 
 
 SUMMARY_FILLER_PATTERNS = (
@@ -619,6 +625,14 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
             "informație. Include numai diferențe materiale privind faptele, valorile după "
             "normalizare, datele, persoanele implicate, cauzele, consecințele ori gradul de "
             "certitudine. "
+            "Înainte de a include o diferență, verifică dacă afirmațiile pot fi simultan "
+            "adevărate. Informațiile complementare, una generală și alta mai detaliată, nu "
+            "sunt contradicții. Un total și componentele sale sunt echivalente dacă rezultatul "
+            "coincide: de exemplu, scorul general 3-7 este compatibil cu manșele 2-3 și 1-4. "
+            "La fel, «România și alte șase state» este compatibil cu enumerarea celor șase "
+            "state, iar «se întoarce la Senat» și «merge din nou în Senat» exprimă același fapt. "
+            "Nu include niciodată în differences o frază care concluzionează că nu există o "
+            "contradicție materială. "
             "În textele destinate cititorului folosește întotdeauna numele publicației din "
             "source__name. Nu afișa article_id, ID-uri, numere interne sau formulări precum "
             "«articolul 27» ori «sursa 27». "
@@ -685,6 +699,93 @@ def _call_summary(client, event, sources, claims, refresh_run, is_update):
         ),
     )
     return json.loads(response.output_text)
+
+
+def _validate_material_differences(
+    client, event, sources, claims, differences, refresh_run, is_update
+):
+    candidates = [
+        difference
+        for difference in differences
+        if difference_is_material_conflict(difference)
+    ]
+    if not candidates:
+        return []
+    model = settings.OPENAI_EVENT_EXTRACTION_MODEL
+    response = client.responses.create(
+        model=model,
+        store=False,
+        instructions=(
+            "Ești un filtru strict pentru contradicții jurnalistice. Marchează material_conflict "
+            "true numai când două surse fac afirmații care nu pot fi simultan adevărate și "
+            "diferența schimbă înțelegerea evenimentului. Marchează false pentru reformulări, "
+            "sinonime, omisiuni, niveluri diferite de detaliu, informații complementare, totaluri "
+            "compatibile cu componentele lor și enumerări compatibile cu un număr agregat. "
+            "Exemple false: 3-7 la general față de 2-3 și 1-4; România și alte șase state față "
+            "de enumerarea acelorași șase state; se întoarce la Senat față de merge din nou la "
+            "Senat. Evaluează exclusiv afirmațiile furnizate și păstrează indexul candidatului."
+        ),
+        input=json.dumps(
+            {
+                "sources": sources,
+                "claims": claims,
+                "candidate_differences": [
+                    {"index": index, "text": text}
+                    for index, text in enumerate(candidates)
+                ],
+            },
+            ensure_ascii=False,
+            default=str,
+        ),
+        max_output_tokens=500,
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "material_difference_validation",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "decisions": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "index": {"type": "integer"},
+                                    "material_conflict": {"type": "boolean"},
+                                },
+                                "required": ["index", "material_conflict"],
+                                "additionalProperties": False,
+                            },
+                        }
+                    },
+                    "required": ["decisions"],
+                    "additionalProperties": False,
+                },
+            }
+        },
+    )
+    record_ai_usage(
+        response,
+        event=event,
+        refresh_run=refresh_run,
+        model=model,
+        input_rate=settings.OPENAI_EVENT_NANO_INPUT_USD_PER_MILLION,
+        cached_input_rate=settings.OPENAI_EVENT_NANO_CACHED_INPUT_USD_PER_MILLION,
+        output_rate=settings.OPENAI_EVENT_NANO_OUTPUT_USD_PER_MILLION,
+        usage_type=(
+            AIUsage.UsageType.EVENT_UPDATE
+            if is_update
+            else AIUsage.UsageType.EVENT_SUMMARY
+        ),
+    )
+    decisions = {
+        item["index"]: item["material_conflict"]
+        for item in json.loads(response.output_text)["decisions"]
+    }
+    return [
+        text for index, text in enumerate(candidates) if decisions.get(index) is True
+    ]
 
 
 def generate_event(event, refresh_run=None, force=False):
@@ -758,13 +859,19 @@ def generate_event(event, refresh_run=None, force=False):
         now = timezone.now()
         event.title = result["title"][:110].rstrip()
         event.summary = remove_summary_filler(result["summary"])
-        event.differences = [
-            cleaned
+        cleaned_differences = [
+            replace_article_references(difference, sources)
             for difference in result["differences"]
-            if difference_is_material_conflict(
-                cleaned := replace_article_references(difference, sources)
-            )
         ]
+        event.differences = _validate_material_differences(
+            client,
+            event,
+            sources,
+            claims,
+            cleaned_differences,
+            refresh_run,
+            is_update,
+        )
         event.timeline = result["timeline"]
         event.source_snapshot = sources
         event.generated_source_count = len(source_ids)

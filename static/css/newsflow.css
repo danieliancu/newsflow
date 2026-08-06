@@ -1676,7 +1676,7 @@ body.has-share-modal { overflow: hidden; }
     margin-right: .2rem;
     margin-bottom: 1px;
 }
-.preference-group[open] summary svg { transform: rotate(180deg); }
+.preference-group[open] summary > svg { transform: rotate(180deg); }
 .preference-group-options { padding: .25rem 0 .8rem 1.65rem; }
 .preference-group small { color: var(--muted); font-size: .62rem; }
 .preference-group--blocked summary { color: #9f2f38; }
@@ -1958,13 +1958,16 @@ body.has-share-modal { overflow: hidden; }
   gap: 1.35rem;
   flex: 1 1 auto;
 }
-.footer-navigation a {
+.footer-navigation a,
+.footer-navigation .footer-cookie-settings {
   color: var(--muted);
   font-size: .7rem;
   font-weight: 600;
+  line-height: normal;
   text-decoration: none;
 }
-.footer-navigation a:hover { color: var(--accent); }
+.footer-navigation a:hover,
+.footer-navigation .footer-cookie-settings:hover { color: var(--accent); }
 .footer-copyright {
   flex: 0 0 auto;
   color: var(--muted);
