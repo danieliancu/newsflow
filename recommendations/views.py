@@ -432,11 +432,6 @@ def _archive_response(
     canonical_url = _public_url(canonical_path)
     total_article_count = ordered_queryset.count()
     indexable = total_article_count >= 5
-    breadcrumb_label = {
-        "category": "Categorii",
-        "source": "Publicații",
-        "topic": "Subiecte",
-    }[archive_type]
     item_list = [
         {
             "@type": "ListItem",
@@ -469,11 +464,6 @@ def _archive_response(
                     {
                         "@type": "ListItem",
                         "position": 2,
-                        "name": breadcrumb_label,
-                    },
-                    {
-                        "@type": "ListItem",
-                        "position": 3,
                         "name": entity.name,
                         "item": canonical_url,
                     },

@@ -1412,6 +1412,26 @@ class SeoArchiveTests(TestCase):
             self.assertContains(response, '"@type": "CollectionPage"')
             self.assertContains(response, '"@type": "BreadcrumbList"')
 
+    def test_archive_breadcrumb_items_include_urls(self):
+        paths = (
+            f"/category/{self.category.slug}/",
+            f"/source/{self.source.slug}/",
+            f"/topic/{self.topic.slug}/",
+        )
+        for path in paths:
+            response = self.client.get(path)
+            schema = json.loads(response.context["structured_data"])
+            breadcrumb = next(
+                item
+                for item in schema["@graph"]
+                if item["@type"] == "BreadcrumbList"
+            )
+
+            self.assertEqual(len(breadcrumb["itemListElement"]), 2)
+            self.assertTrue(
+                all(item.get("item") for item in breadcrumb["itemListElement"])
+            )
+
     def test_archives_show_today_first_and_group_older_articles_by_day(self):
         today_article = Article.objects.get(title="Articol SEO 0")
         older_article = Article.objects.get(title="Articol SEO 1")
